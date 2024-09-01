@@ -28,7 +28,9 @@ jobs:
         run: |
           cp common/*.json layer_output/nodejs/common/
           cp -r node_modules layer_output/nodejs/
-          zip -r layer_output/layer.zip ./layer_output/nodejs
+          cd layer_output
+          zip -r layer.zip nodejs
+          cd ..
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
