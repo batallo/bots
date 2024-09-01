@@ -1,0 +1,18 @@
+{
+  "name": "bots",
+  "version": "1.0.0",
+  "description": "Repo to handle Telegram bots",
+  "main": "index.js",
+  "scripts": {
+    "pret": "npx prettier --write ."
+  },
+  "keywords": [],
+  "author": "anton.shautsou+bots@gmail.com",
+  "license": "ISC",
+  "devDependencies": {
+    "aws-sdk": "^2.1687.0",
+    "axios": "^1.7.6",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}
