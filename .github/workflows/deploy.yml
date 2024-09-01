@@ -41,7 +41,7 @@ jobs:
 
       - name: Update Lambda layer
         run: |
-          LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip)
+          LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip --query LayerVersionArn --output text)
           aws lambda update-function-configuration --function-name moo_v_bot --layers $LAYER_ARN
 
       - name: Clean up
