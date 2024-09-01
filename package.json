@@ -4,6 +4,7 @@
   "description": "Repo to handle Telegram bots",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
     "pret": "npx prettier --write ."
   },
   "keywords": [],

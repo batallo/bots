@@ -1,0 +1,45 @@
+name: Deploy to AWS Lambda Layer
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Zip the required files and folders
+        run: |
+          cp common/*.json layer_output/nodejs/common/
+          cp -r node_modules layer_output/nodejs/
+          zip -r layer_output/layer.zip layer_output/nodejs
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update Lambda layer
+        run: |
+          LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip --query LayerVersionArn --output text)
+          aws lambda update-function-configuration --function-name moo_v_bot --layers $LAYER_ARN
+
+      - name: Clean up
+        run: rm -rf layer_output
