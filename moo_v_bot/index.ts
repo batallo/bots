@@ -42,6 +42,8 @@ export async function handler(event: any) {
         await mooVBot.sendToTelegram(chatId, txt);
       } else if (inputMessage == 'лол') {
         await mooVBot.sendToTelegram(chatId, 'кек');
+      } else if (inputMessage == 'lol') {
+        await mooVBot.sendToTelegram(chatId, 'kek');
       } else {
         await mooVBot.sendToTelegram(chatId, mooVBot.getRythme(inputMessage));
       }
