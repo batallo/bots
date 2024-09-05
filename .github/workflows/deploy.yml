@@ -26,10 +26,14 @@ jobs:
 
       - name: Zip the required files and folders
         run: |
+          mkdir -p layer_output/nodejs
+          mv layer_output/common layer_output/nodejs/
           cp common/*.json layer_output/nodejs/common/
           cp -r node_modules layer_output/nodejs/
           cd layer_output
           zip -r layer.zip nodejs
+          find . -type d -name 'nodejs' -prune -o -type f -exec sed -i 's|\.\./common|/opt/nodejs/common|g' {} +
+          (cd moo_v_bot && zip -r ../moo_v_bot.zip .)
           cd ..
 
       - name: Configure AWS credentials
@@ -39,7 +43,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Update Lambda layer
+      - name: Update Lambda Function
+        run: |
+          aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
+
+      - name: Update Lambda Layer
         run: |
           LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip --query 'LayerVersionArn' --output text)
           aws lambda update-function-configuration --function-name moo_v_bot --layers $LAYER_ARN --query 'Layers' --output table

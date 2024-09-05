@@ -9,7 +9,7 @@
     "lib": ["es2022", "dom"],
     "resolveJsonModule": true,
     "rootDir": "./",
-    "outDir": "layer_output/nodejs"
+    "outDir": "layer_output"
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules", "layer"]
