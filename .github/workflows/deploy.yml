@@ -45,7 +45,7 @@ jobs:
 
       - name: Update Lambda Function
         run: |
-          aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip
+          aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
 
       - name: Update Lambda Layer
         run: |
