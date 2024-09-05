@@ -33,7 +33,7 @@ jobs:
           cd layer_output
           zip -r layer.zip nodejs
           find . -type d -name 'nodejs' -prune -o -type f -exec sed -i 's|\.\./common|/opt/nodejs/common|g' {} +
-          zip -r moo_v_bot.zip moo_v_bot/
+          zip -r moo_v_bot.zip moo_v_bot/*
           cd ..
 
       - name: Configure AWS credentials
