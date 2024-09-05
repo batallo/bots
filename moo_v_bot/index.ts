@@ -40,8 +40,8 @@ export async function handler(event: any) {
           console.error('Error', err);
         }
         await mooVBot.sendToTelegram(chatId, txt);
-      } else if (inputMessage == 'lol') {
-        await mooVBot.sendToTelegram(chatId, 'kek');
+      } else if (inputMessage == 'лол') {
+        await mooVBot.sendToTelegram(chatId, 'кек');
       } else {
         await mooVBot.sendToTelegram(chatId, mooVBot.getRythme(inputMessage));
       }
