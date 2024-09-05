@@ -43,14 +43,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Update Lambda Function
+        run: |
+          aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip
+
       - name: Update Lambda Layer
         run: |
           LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip --query 'LayerVersionArn' --output text)
           aws lambda update-function-configuration --function-name moo_v_bot --layers $LAYER_ARN --query 'Layers' --output table
-
-      - name: Update Lambda Function
-        run: |
-          aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip
 
       - name: Clean up
         run: rm -rf layer_output
