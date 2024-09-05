@@ -32,7 +32,7 @@ jobs:
           cp -r node_modules layer_output/nodejs/
           cd layer_output
           zip -r layer.zip nodejs
-          find . -type d -name 'nodejs' -prune -o -type f -exec sed -i 's|\.\./common|/opt/nodejs/common|g' {} +
+          find . -type d -name 'nodejs' -prune -o -type f -exec sed -i 's|\.\./\{1,\}common|/opt/nodejs/common|g' {} +
           (cd moo_v_bot && zip -r ../moo_v_bot.zip .)
           cd ..
 
