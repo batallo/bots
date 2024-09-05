@@ -1,8 +1,8 @@
 import AWS from 'aws-sdk';
-import { BaseBot } from '../common/bot_base.js';
+import { MooVBot } from './src';
 
 const docClient = new AWS.DynamoDB.DocumentClient();
-const MooVBot = new BaseBot('moo_v_bot', process.env.TOKEN_BOT_MOO_V as string);
+const mooVBot = new MooVBot(process.env.TOKEN_BOT_MOO_V as string);
 
 export async function handler(event: any) {
   const request = event.body && JSON.parse(event.body);
@@ -39,9 +39,11 @@ export async function handler(event: any) {
         } catch (err) {
           console.error('Error', err);
         }
-        await MooVBot.sendToTelegram(chatId, txt);
+        await mooVBot.sendToTelegram(chatId, txt);
+      } else if (inputMessage == 'lol') {
+        await mooVBot.sendToTelegram(chatId, 'kek');
       } else {
-        await MooVBot.sendToTelegram(chatId, MooVBot.getRythme(inputMessage));
+        await mooVBot.sendToTelegram(chatId, mooVBot.getRythme(inputMessage));
       }
     }
   }
