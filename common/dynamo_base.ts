@@ -10,9 +10,11 @@ export class DynamoDbBase {
   }
 
   async addItem<T extends Record<string, any>>(itemData: T) {
+    let dataResponse;
     const putParams = { TableName: this.dbTitle, Item: itemData };
     try {
-      await this.docClient.put(putParams).promise();
+      dataResponse = await this.docClient.put(putParams).promise();
+      console.log(`Added item to DynamoDB: `, dataResponse?.Attributes);
     } catch (err) {
       console.error(`Error updating "${this.dbTitle}" DynamoDB: `, err);
     }
@@ -28,6 +30,7 @@ export class DynamoDbBase {
 
     try {
       dataResponse = await this.docClient.get(params).promise();
+      console.log(`Queried DynamoDB: `, dataResponse?.Item);
     } catch (err) {
       console.error(`Error querying "${this.dbTitle}" DynamoDB: `, err);
     }

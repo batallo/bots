@@ -21,7 +21,7 @@ export class MooVBot extends BaseBot {
     return input?.match(/^remove_\d$/);
   }
 
-  async inlineWaitsMovieInput(chatId: number) {
+  async isWaitingMovieInput(chatId: number) {
     const compositeKey = this.getCompositeKey(chatId);
     const userData = await this.dynamoDbClient.getItem<UserSchema>(compositeKey);
     return userData?.waitForMovieInput;
@@ -29,6 +29,24 @@ export class MooVBot extends BaseBot {
 
   getCompositeKey(chatId: number, isDeleted = false) {
     return { chat_id: chatId, deleted: +isDeleted };
+  }
+
+  //TO DO: update userInputData type
+  async addUser(userInputData: any) {
+    const userData: UserSchema = {
+      chat_id: userInputData.id,
+      deleted: 0,
+      movies: [],
+      user_data: {
+        first_name: userInputData.first_name,
+        last_name: userInputData.last_name,
+        timeUserAdded: new Date().getTime(),
+        timeUserLastAction: new Date().getTime(),
+        username: userInputData.username
+      },
+      waitForMovieInput: 0
+    };
+    return await this.dynamoDbClient.addItem<UserSchema>(userData);
   }
 
   async addMovie(chatId: number, movieName: string, options?: TelegramSendParam) {
