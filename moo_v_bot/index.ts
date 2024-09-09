@@ -23,18 +23,21 @@ export async function handler(event: any) {
     const inlineWaitsMovieInput = await mooVBot.inlineWaitsMovieInput(chatId);
     //
 
-    if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) await mooVBot.inlineList(chatId);
-    if (callbackData == 'add_cancel') await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
-    if (callbackData == 'list_add') await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
-    if (callbackData == 'list_remove') await mooVBot.inlineRemove(chatId, { updateMessageId: innerValue.message_id });
+    if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) return await mooVBot.inlineList(chatId);
+    if (callbackData == 'add_cancel') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+    if (callbackData == 'list_add') return await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
+    if (callbackData == 'list_remove') return await mooVBot.inlineRemove(chatId, { updateMessageId: innerValue.message_id });
     if (mooVBot.isRemoveMovieCommand(callbackData)) {
       const index = callbackData.match(/\d/)?.at(0) as string;
       await mooVBot.removeMovie(chatId, index, { updateMessageId: innerValue.message_id });
-      await mooVBot.inlineList(chatId);
+      return await mooVBot.inlineList(chatId);
     }
-    if (callbackData == 'remove_cancel') await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
-    if (inlineWaitsMovieInput && inputMessage) await mooVBot.addMovie(chatId, inputMessage, { updateMessageId: inlineWaitsMovieInput });
-  }
+    if (callbackData == 'remove_cancel') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+    if (inlineWaitsMovieInput && inputMessage) {
+      await mooVBot.addMovie(chatId, inputMessage, { updateMessageId: inlineWaitsMovieInput });
+      return await mooVBot.inlineList(chatId);
+    }
 
-  return { statusCode: 200 };
+    if (request.message) return mooVBot.getRythme(inputMessage);
+  }
 }
