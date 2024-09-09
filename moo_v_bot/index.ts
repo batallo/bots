@@ -23,7 +23,7 @@ export async function handler(event: any) {
     const inlineWaitsMovieInput = await mooVBot.isWaitingMovieInput(chatId);
     //
 
-    if (inlineWaitsMovieInput == undefined && innerValue.chat.type == 'private') return mooVBot.addUser(innerValue.chat);
+    if (inlineWaitsMovieInput == undefined && innerValue.chat.type == 'private') await mooVBot.addUser(innerValue.chat);
 
     if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) return await mooVBot.inlineList(chatId);
     if (callbackData == 'add_cancel') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });

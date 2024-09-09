@@ -16,7 +16,7 @@ export class DynamoDbBase {
       dataResponse = await this.docClient.put(putParams).promise();
       console.log(`Added item to DynamoDB: `, dataResponse?.Attributes);
     } catch (err) {
-      console.error(`Error updating "${this.dbTitle}" DynamoDB: `, err);
+      console.error(`Error adding item to DynamoDB: `, err);
     }
   }
 
