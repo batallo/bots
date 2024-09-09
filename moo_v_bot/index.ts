@@ -19,13 +19,14 @@ export async function handler(event: any) {
     const inputMessage: string = innerValue.text;
     const callbackData: string = request.callback_query?.data;
 
-    if (mooVBot.isStartCommand(inputMessage) && mooVBot.isGetListCommand(inputMessage)) await mooVBot.inlineList(chatId);
+    if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) await mooVBot.inlineList(chatId);
     if (callbackData == 'add_cancel') await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
     if (callbackData == 'list_add') await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
     if (callbackData == 'list_remove') await mooVBot.inlineRemove(chatId, { updateMessageId: innerValue.message_id });
     if (mooVBot.isRemoveMovieCommand(callbackData)) {
-      const index = callbackData.match(/\d/)?.at(0);
-      if (index != undefined) await mooVBot.removeMovie(chatId, index, { updateMessageId: innerValue.message_id });
+      const index = callbackData.match(/\d/)?.at(0) as string;
+      await mooVBot.removeMovie(chatId, index, { updateMessageId: innerValue.message_id });
+      await mooVBot.inlineList(chatId);
     }
     if (callbackData == 'remove_cancel') await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
     if (/^\/add/.test(innerValue)) await mooVBot.addMovie(chatId, innerValue, { updateMessageId: innerValue.message_id });

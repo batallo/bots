@@ -18,7 +18,7 @@ export class MooVBot extends BaseBot {
   }
 
   isRemoveMovieCommand(input: string) {
-    return input.match(/^remove_\d$/);
+    return input?.match(/^remove_\d$/);
   }
 
   getCompositeKey(chatId: number, isDeleted = false) {
