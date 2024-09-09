@@ -19,6 +19,10 @@ export async function handler(event: any) {
     const inputMessage: string = innerValue.text;
     const callbackData: string = request.callback_query?.data;
 
+    //consider sending userData into bot methods as parameter to avoid duplicating calls to db
+    const inlineWaitsMovieInput = await mooVBot.inlineWaitsMovieInput(chatId);
+    //
+
     if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) await mooVBot.inlineList(chatId);
     if (callbackData == 'add_cancel') await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
     if (callbackData == 'list_add') await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
@@ -29,7 +33,7 @@ export async function handler(event: any) {
       await mooVBot.inlineList(chatId);
     }
     if (callbackData == 'remove_cancel') await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
-    if (/^\/add/.test(innerValue)) await mooVBot.addMovie(chatId, innerValue, { updateMessageId: innerValue.message_id });
+    if (inlineWaitsMovieInput && inputMessage) await mooVBot.addMovie(chatId, inputMessage, { updateMessageId: inlineWaitsMovieInput });
   }
 
   return { statusCode: 200 };

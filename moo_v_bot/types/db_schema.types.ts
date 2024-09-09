@@ -9,5 +9,5 @@ export interface UserSchema {
     timeUserLastAction: number;
     username: string;
   };
-  waitForMovieInput: boolean;
+  waitForMovieInput: number;
 }

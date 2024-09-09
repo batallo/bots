@@ -21,6 +21,12 @@ export class MooVBot extends BaseBot {
     return input?.match(/^remove_\d$/);
   }
 
+  async inlineWaitsMovieInput(chatId: number) {
+    const compositeKey = this.getCompositeKey(chatId);
+    const userData = await this.dynamoDbClient.getItem<UserSchema>(compositeKey);
+    return userData?.waitForMovieInput;
+  }
+
   getCompositeKey(chatId: number, isDeleted = false) {
     return { chat_id: chatId, deleted: +isDeleted };
   }
@@ -31,7 +37,8 @@ export class MooVBot extends BaseBot {
     const compositeKey = this.getCompositeKey(chatId);
 
     const movies = await this.getMoviesList(chatId);
-    const newMovie = movieName.trim().slice(0, this.maxMovieTitleLength).concat('...');
+    const exceedsLengthLimit = movieName.trim().length > this.maxMovieTitleLength;
+    const newMovie = exceedsLengthLimit ? movieName.trim().slice(0, this.maxMovieTitleLength).concat('...') : movieName.trim();
     movies?.push(newMovie);
     const exceedsLimit = movies?.length > this.maxMoviesCount;
 
@@ -39,7 +46,7 @@ export class MooVBot extends BaseBot {
 
     if (!exceedsLimit) await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { movies: movies });
 
-    await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { waitForMovieInput: false });
+    await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { waitForMovieInput: 0 });
     return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId });
   }
 
@@ -70,7 +77,7 @@ export class MooVBot extends BaseBot {
     await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: [inlineParams] });
 
     const compositeKey = this.getCompositeKey(chatId);
-    await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { waitForMovieInput: true });
+    await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { waitForMovieInput: options?.updateMessageId });
   }
 
   async inlineList(chatId: number, options?: TelegramSendParam) {
