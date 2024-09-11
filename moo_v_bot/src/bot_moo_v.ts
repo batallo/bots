@@ -27,6 +27,10 @@ export class MooVBot extends BaseBot {
     return userData?.waitForMovieInput;
   }
 
+  async setWaitForMovieInput(chatId: number, inlineMessageId: number = 0) {
+    await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForMovieInput: inlineMessageId });
+  }
+
   getCompositeKey(chatId: number, isDeleted = false) {
     return { chat_id: chatId, deleted: +isDeleted };
   }
@@ -50,7 +54,7 @@ export class MooVBot extends BaseBot {
   }
 
   async addMovie(chatId: number, movieName: string, options?: TelegramSendParam) {
-    const baseMessage = 'Movies was successfully added to your list';
+    const baseMessage = 'Movie was successfully added to your list';
     const exceedsListLimit = `Currently you could store no more than <b>${this.maxMoviesCount} movies</b> in your list`;
     const compositeKey = this.getCompositeKey(chatId);
 
@@ -64,7 +68,7 @@ export class MooVBot extends BaseBot {
 
     if (!exceedsLimit) await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { movies: movies });
 
-    await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { waitForMovieInput: 0 });
+    await this.setWaitForMovieInput(chatId, 0);
     return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId });
   }
 
@@ -75,7 +79,7 @@ export class MooVBot extends BaseBot {
   }
 
   async removeMovie(chatId: number, movieIndex: string, options?: TelegramSendParam) {
-    const baseMessage = 'Movies was successfully removed from your list';
+    const baseMessage = 'Movie was successfully removed from your list';
     const swwMessage = `Something went wrong. Please try again later`;
     const compositeKey = this.getCompositeKey(chatId);
 
@@ -93,9 +97,7 @@ export class MooVBot extends BaseBot {
     console.log('Keyboard props: ', inlineParams);
 
     await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: [inlineParams] });
-
-    const compositeKey = this.getCompositeKey(chatId);
-    await this.dynamoDbClient.updateItem<UserSchema>(compositeKey, { waitForMovieInput: options?.updateMessageId });
+    await this.setWaitForMovieInput(chatId, options?.updateMessageId);
   }
 
   async inlineList(chatId: number, options?: TelegramSendParam) {

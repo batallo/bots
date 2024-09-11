@@ -11,7 +11,7 @@ export async function handler(event: any) {
 
   if (!request) return response;
 
-  const innerValue = request.message || request.callback_query.message || request.channel_post;
+  const innerValue = request.message || request.callback_query?.message || request.channel_post;
   console.log('Received next Inner Value: ', innerValue);
 
   if (innerValue) {
@@ -26,7 +26,10 @@ export async function handler(event: any) {
     if (inlineWaitsMovieInput == undefined && innerValue.chat.type == 'private') await mooVBot.addUser(innerValue.chat);
 
     if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) return await mooVBot.inlineList(chatId);
-    if (callbackData == 'add_cancel') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+    if (callbackData == 'add_cancel') {
+      await mooVBot.setWaitForMovieInput(chatId, 0);
+      return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+    }
     if (callbackData == 'list_add') return await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
     if (callbackData == 'list_remove') return await mooVBot.inlineRemove(chatId, { updateMessageId: innerValue.message_id });
     if (mooVBot.isRemoveMovieCommand(callbackData)) {
