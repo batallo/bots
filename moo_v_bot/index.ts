@@ -1,54 +1,57 @@
-import AWS from 'aws-sdk';
 import { MooVBot } from './src';
 
-const docClient = new AWS.DynamoDB.DocumentClient();
 const mooVBot = new MooVBot(process.env.TOKEN_BOT_MOO_V as string);
 
 export async function handler(event: any) {
   const request = event.body && JSON.parse(event.body);
   const response = {
-    statusCode: 200,
-    body: JSON.stringify('Hello from Lambda!')
+    statusCode: 400,
+    body: JSON.stringify('Something went wrong with request')
   };
 
   if (!request) return response;
 
-  const innerValue = request.message || request.channel_post;
-  // const memberAction = request.body.my_chat_member;
-
-  console.warn(innerValue);
+  const innerValue = request.message || request.callback_query?.message || request.channel_post;
+  console.log('Received next Inner Value: ', innerValue);
 
   if (innerValue) {
-    const chatId = innerValue.chat.id;
-    const inputMessage = innerValue.text;
-    if (inputMessage) {
-      if (inputMessage == 'getDb') {
-        let txt: any;
+    const chatId: number = innerValue.chat.id;
+    const inputMessage: string = innerValue.text;
+    const callbackData: string = request.callback_query?.data;
 
-        const params = {
-          TableName: 'moo_v_bot',
-          KeyConditionExpression: 'group_id = :gid',
-          ExpressionAttributeValues: {
-            ':gid': 0
-          }
-        };
+    //consider sending userData into bot methods as parameter to avoid duplicating calls to db
+    const inlineWaitsMovieInput = await mooVBot.isWaitingMovieInput(chatId);
+    //
 
-        try {
-          const data = await docClient.query(params).promise();
-          txt = data.Items;
-        } catch (err) {
-          console.error('Error', err);
-        }
-        await mooVBot.sendToTelegram(chatId, txt);
-      } else if (inputMessage == 'лол') {
-        await mooVBot.sendToTelegram(chatId, 'кек');
-      } else if (inputMessage == 'lol') {
-        await mooVBot.sendToTelegram(chatId, 'kek');
-      } else {
-        await mooVBot.sendToTelegram(chatId, mooVBot.getRythme(inputMessage));
-      }
+    if (inlineWaitsMovieInput == undefined && innerValue.chat.type == 'private') await mooVBot.addUser(innerValue.chat);
+
+    if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) return await mooVBot.inlineList(chatId);
+
+    if (callbackData == 'add_cancel') {
+      await mooVBot.setWaitForMovieInput(chatId, 0);
+      return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+    }
+
+    if (callbackData == 'list_add') return await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
+
+    if (callbackData == 'list_remove') return await mooVBot.inlineRemove(chatId, { updateMessageId: innerValue.message_id });
+
+    if (mooVBot.isRemoveMovieCommand(callbackData)) {
+      const index = callbackData.match(/\d/)?.at(0) as string;
+      await mooVBot.removeMovie(chatId, index, { updateMessageId: innerValue.message_id });
+      return await mooVBot.inlineList(chatId);
+    }
+
+    if (callbackData == 'remove_cancel') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+
+    if (inlineWaitsMovieInput && inputMessage) {
+      await mooVBot.addMovie(chatId, inputMessage, { updateMessageId: inlineWaitsMovieInput });
+      return await mooVBot.inlineList(chatId);
+    }
+
+    if (request.message && chatId == (process.env.MASTER_ID as any)) {
+      const rythme = mooVBot.getRythme(inputMessage);
+      return await mooVBot.sendToTelegram(chatId, rythme);
     }
   }
-
-  return { statusCode: 200 };
 }

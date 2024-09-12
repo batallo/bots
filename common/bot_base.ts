@@ -1,15 +1,15 @@
 import axios from 'axios';
-// import commands from './commands.json';
-
+import { TelegramSendParam } from './types';
+import { DynamoDbBase } from './dynamo_base';
 export class BaseBot {
-  protected name: string;
+  protected botName: string;
+  protected dynamoDbClient: DynamoDbBase;
   private botToken: string;
-  // private listOfCommands: string[];
 
-  constructor(name: string, botToken: string) {
-    this.name = name;
+  constructor(botName: string, botToken: string) {
+    this.botName = botName;
     this.botToken = botToken;
-    // this.listOfCommands = Object.keys(commands);
+    this.dynamoDbClient = new DynamoDbBase(botName);
   }
 
   isCommand(input: string) {
@@ -17,15 +17,19 @@ export class BaseBot {
   }
 
   isStartCommand(input: string) {
-    return this.isCommand(input) && input == '/start'; //upd to include botname
+    const startRegExp = new RegExp(`^/start(@${this.botName})?$`);
+    return startRegExp.test(input);
   }
 
-  async sendToTelegram(chatID: number, message: string, parseMode = 'HTML') {
+  async sendToTelegram(chatId: number, message: string, options?: TelegramSendParam) {
+    const urlEnding = options?.updateMessageId ? 'editMessageText' : 'sendMessage';
     const response = await axios
-      .post(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
-        chat_id: chatID,
+      .post(`https://api.telegram.org/bot${this.botToken}/${urlEnding}`, {
+        chat_id: chatId,
+        message_id: options?.updateMessageId,
         text: message,
-        parse_mode: parseMode
+        parse_mode: options?.parseMode ?? 'HTML',
+        reply_markup: { inline_keyboard: options?.inlineKeyboard }
       })
       .catch(err => {
         const errorNotice = '-=ERROR ********** ERROR=-';
