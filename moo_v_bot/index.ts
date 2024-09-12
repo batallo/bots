@@ -26,23 +26,32 @@ export async function handler(event: any) {
     if (inlineWaitsMovieInput == undefined && innerValue.chat.type == 'private') await mooVBot.addUser(innerValue.chat);
 
     if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) return await mooVBot.inlineList(chatId);
+
     if (callbackData == 'add_cancel') {
       await mooVBot.setWaitForMovieInput(chatId, 0);
       return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
     }
+
     if (callbackData == 'list_add') return await mooVBot.inlineAdd(chatId, { updateMessageId: innerValue.message_id });
+
     if (callbackData == 'list_remove') return await mooVBot.inlineRemove(chatId, { updateMessageId: innerValue.message_id });
+
     if (mooVBot.isRemoveMovieCommand(callbackData)) {
       const index = callbackData.match(/\d/)?.at(0) as string;
       await mooVBot.removeMovie(chatId, index, { updateMessageId: innerValue.message_id });
       return await mooVBot.inlineList(chatId);
     }
+
     if (callbackData == 'remove_cancel') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
+
     if (inlineWaitsMovieInput && inputMessage) {
       await mooVBot.addMovie(chatId, inputMessage, { updateMessageId: inlineWaitsMovieInput });
       return await mooVBot.inlineList(chatId);
     }
 
-    if (request.message) return mooVBot.getRythme(inputMessage);
+    if (request.message && chatId == (process.env.MASTER_ID as any)) {
+      const rythme = mooVBot.getRythme(inputMessage);
+      return await mooVBot.sendToTelegram(chatId, rythme);
+    }
   }
 }
