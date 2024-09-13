@@ -35,7 +35,7 @@ export class MooVBot extends BaseBot {
     await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForMovieInput: inlineMessageId });
   }
 
-  async setCurrentPoll(chatId: number, pollId: number = 0) {
+  async setCurrentPoll(chatId: number, pollId: number) {
     // TODO: update type for updateItem to allow composite keys for updateProperty param
     const n = 'votes.participants.poll_id' as any;
     await this.dynamoDbClient.updateItem<GroupSchema>(this.getCompositeKey(chatId), { [n]: pollId });
@@ -178,10 +178,18 @@ export class MooVBot extends BaseBot {
     const maxVoteOptionsCount = 10;
     const voteMessage = 'Which Movie would you like to watch today?';
     const listOfUsers = (await this.getItem<GroupSchema>(chatId))?.votes?.participants?.user_ids;
-    const allWatchersData = await this.dynamoDbClient.batchGetItem<UserSchema>('chat_id', listOfUsers);
-    const allMovies = allWatchersData.flatMap(user => user.movies);
+    if (!listOfUsers) return this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
 
-    let voteOptions = allMovies.slice(0, maxVoteOptionsCount);
+    const usersQueryParams = listOfUsers.map(user => this.getCompositeKey(user));
+    const allWatchersData = await this.dynamoDbClient.batchGetItem<UserSchema>(usersQueryParams);
+    const allMovies = allWatchersData?.flatMap(user => user.movies);
+    if (allMovies == undefined || allMovies?.length == 0) return this.sendToTelegram(chatId, 'It is up to you, which movie to watch!');
+
+    const voteOptions: string[] = [];
+    do {
+      const randomIndex = Math.floor(allMovies.length * Math.random());
+      voteOptions.push(...allMovies.splice(randomIndex, 1));
+    } while (allMovies.length && voteOptions.length < maxVoteOptionsCount);
 
     return await this.sendToTelegramPoll(chatId, voteMessage, voteOptions, { is_anonymous: false, allows_multiple_answers: true });
   }
@@ -191,6 +199,6 @@ export class MooVBot extends BaseBot {
     const voteOptions = ['Yes, I do!', 'Nope', 'Will consider'];
     const response = await this.sendToTelegramPoll(chatId, voteMessage, voteOptions, { is_anonymous: false });
     const pollId = response.result.poll.id;
-    await this.setCurrentPoll(pollId);
+    await this.setCurrentPoll(chatId, pollId);
   }
 }

@@ -30,10 +30,11 @@ export async function handler(event: any) {
 
     // GROUP CHAT
     if (!isPrivateChat) {
+      const user = innerValue.from.id;
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
-      if (mooVBot.isVoteWatchersCommand(inputMessage) && chatId == (process.env.MASTER_ID as any)) return await mooVBot.startVoteWatchers(chatId);
-      if (mooVBot.isVoteMoviesCommand(inputMessage) && chatId == (process.env.MASTER_ID as any)) return await mooVBot.startVoteMovies(chatId);
+      if (mooVBot.isVoteWatchersCommand(inputMessage) && user == (process.env.MASTER_ID as any)) return await mooVBot.startVoteWatchers(chatId);
+      if (mooVBot.isVoteMoviesCommand(inputMessage) && user == (process.env.MASTER_ID as any)) return await mooVBot.startVoteMovies(chatId);
     }
 
     // PRIVATE CHAT

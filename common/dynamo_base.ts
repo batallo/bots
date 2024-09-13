@@ -11,7 +11,7 @@ export class DynamoDbBase {
 
   async addItem<T extends Record<string, any>>(itemData: T) {
     let dataResponse;
-    const putParams = { TableName: this.dbTitle, Item: itemData }; //update to output item as a result
+    const putParams = { TableName: this.dbTitle, Item: itemData }; // TO DO: update to output item as a result
     try {
       dataResponse = await this.docClient.put(putParams).promise();
       console.log(`Added item to DynamoDB: `, dataResponse?.Attributes);
@@ -38,14 +38,13 @@ export class DynamoDbBase {
     return dataResponse?.Item as T;
   }
 
-  // TODO: improve typing for partitionKeyName
-  async batchGetItem<T extends Record<string, any>>(partitionKeyName: keyof T, query: T[keyof T][]): Promise<T[]> {
+  // TODO: improve typing for compositeKeys
+  async batchGetItem<T extends Record<string, any>>(compositeKeys: Partial<T>[]): Promise<T[]> {
     let dataResponse;
-    const keyValues = query.map(el => ({ [partitionKeyName]: el }));
 
     const params = {
       RequestItems: {
-        [this.dbTitle]: { Keys: keyValues }
+        [this.dbTitle]: { Keys: compositeKeys }
       }
     };
 
