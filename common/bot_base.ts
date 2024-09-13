@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { TelegramSendParam } from './types';
+import { TelegramSendParam, TelegramPollSettings } from './types';
 import { DynamoDbBase } from './dynamo_base';
 export class BaseBot {
   protected botName: string;
@@ -30,6 +30,22 @@ export class BaseBot {
         text: message,
         parse_mode: options?.parseMode ?? 'HTML',
         reply_markup: { inline_keyboard: options?.inlineKeyboard }
+      })
+      .catch(err => {
+        const errorNotice = '-=ERROR ********** ERROR=-';
+        console.error(errorNotice + '\n' + err.response.data + '\n' + errorNotice);
+        throw new Error(err);
+      });
+    return response?.data;
+  }
+
+  async sendToTelegramPoll(chatId: number, pollQuestion: string, pollOptions: string[], settings?: TelegramPollSettings) {
+    const response = await axios
+      .post(`https://api.telegram.org/bot${this.botToken}/sendPoll`, {
+        chat_id: chatId,
+        question: pollQuestion,
+        options: pollOptions,
+        ...settings
       })
       .catch(err => {
         const errorNotice = '-=ERROR ********** ERROR=-';

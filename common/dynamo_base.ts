@@ -38,6 +38,27 @@ export class DynamoDbBase {
     return dataResponse?.Item as T;
   }
 
+  // TODO: improve typing for partitionKeyName
+  async batchGetItem<T extends Record<string, any>>(partitionKeyName: keyof T, query: T[keyof T][]): Promise<T[]> {
+    let dataResponse;
+    const keyValues = query.map(el => ({ [partitionKeyName]: el }));
+
+    const params = {
+      RequestItems: {
+        [this.dbTitle]: { Keys: keyValues }
+      }
+    };
+
+    try {
+      dataResponse = await this.docClient.batchGet(params).promise();
+      console.log(`Queried DynamoDB Batch: `, dataResponse?.Responses?.[this.dbTitle]);
+    } catch (err) {
+      console.error(`Error batch querying "${this.dbTitle}" DynamoDB: `, err);
+    }
+
+    return dataResponse?.Responses?.[this.dbTitle] as T[];
+  }
+
   async removeItem<T extends Record<string, any>>(compositeKey: Partial<T>, removeProperty: string) {
     const removeParams = {
       TableName: this.dbTitle,

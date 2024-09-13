@@ -10,3 +10,10 @@ export interface TelegramSendParam {
   updateMessageId?: number;
   inlineKeyboard?: Array<InlineKeyboard[]>;
 }
+
+export interface TelegramPollSettings {
+  is_anonymous?: boolean;
+  allows_multiple_answers?: boolean;
+  open_period?: number;
+  close_date?: number;
+}
