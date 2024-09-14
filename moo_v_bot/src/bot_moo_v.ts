@@ -214,8 +214,7 @@ export class MooVBot extends BaseBot {
   async addWatcher(chatWithVote: GroupSchema, userId: number) {
     const compositeKey = this.getCompositeKey(chatWithVote.chat_id);
     const watchers = [userId].concat(chatWithVote?.votes?.participants?.user_ids ?? []);
-    const newVotes = { participants: { user_ids: [...new Set(watchers)] } };
     const userIdsKey = 'votes.participants.user_ids' as any;
-    await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: newVotes });
+    await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: [...new Set(watchers)] });
   }
 }

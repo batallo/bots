@@ -1,5 +1,11 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocument, PutCommandInput, UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocument, PutCommandInput, TranslateConfig, UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
+
+const docClientOptions: TranslateConfig = {
+  marshallOptions: {
+    removeUndefinedValues: true
+  }
+};
 
 export class DynamoDbBase {
   private dbTitle: string;
@@ -7,7 +13,7 @@ export class DynamoDbBase {
 
   constructor(dbTitle: string) {
     this.dbTitle = dbTitle;
-    this.docClient = DynamoDBDocument.from(new DynamoDBClient());
+    this.docClient = DynamoDBDocument.from(new DynamoDBClient(), docClientOptions);
   }
 
   async addItem<T extends Record<string, any>>(itemData: T) {
