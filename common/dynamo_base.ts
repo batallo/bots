@@ -18,7 +18,7 @@ export class DynamoDbBase {
 
   async addItem<T extends Record<string, any>>(itemData: T) {
     let dataResponse;
-    const putParams: PutCommandInput = { TableName: this.dbTitle, Item: itemData, ReturnValues: 'ALL_NEW' };
+    const putParams: PutCommandInput = { TableName: this.dbTitle, Item: itemData };
     try {
       dataResponse = await this.docClient.put(putParams);
       console.log(`Added item to DynamoDB: `, dataResponse?.Attributes);
