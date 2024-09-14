@@ -83,6 +83,8 @@ export class DynamoDbBase {
     try {
       dataResponse = await this.docClient.scan(params).promise();
       console.log(`Scanning DynamoDB: `, dataResponse?.Items);
+      console.log(`Scanning DynamoDB: `, dataResponse); //temp
+      console.log(`Scanning DynamoDB: `, params); //temp
     } catch (err) {
       console.error(`Error scanning "${this.dbTitle}" DynamoDB: `, err);
     }
