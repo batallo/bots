@@ -12,8 +12,15 @@ export async function handler(event: any) {
 
   if (!request) return response;
 
-  const innerValue = request.message || request.callback_query?.message || request.channel_post; // || request.poll_answer;
-  console.log('Received next Inner Value: ', innerValue);
+  const innerValue = request.message || request.callback_query?.message || request.channel_post;
+  const pollAnswer = request.poll_answer;
+  if (innerValue) console.log('Received next Inner Value: ', innerValue);
+  if (pollAnswer) {
+    console.log('Received next Poll Answer: ', pollAnswer);
+    const voteChat = (await mooVBot.getChatWithVote(+pollAnswer.poll_id)).at(0);
+    const userId: number = pollAnswer.user.id;
+    if (voteChat) await mooVBot.addWatcher(voteChat, userId);
+  }
 
   if (innerValue) {
     const chatId: number = innerValue.chat.id;

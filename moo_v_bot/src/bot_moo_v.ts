@@ -37,8 +37,13 @@ export class MooVBot extends BaseBot {
 
   async setCurrentPoll(chatId: number, pollId: number) {
     // TODO: update type for updateItem to allow composite keys for updateProperty param
-    const n = 'votes.participants.poll_id' as any;
-    await this.dynamoDbClient.updateItem<GroupSchema>(this.getCompositeKey(chatId), { [n]: pollId });
+    const pollKey = 'votes.participants' as any;
+    const pollValue: GroupSchema['votes']['participants'] = {
+      active: true,
+      poll_id: pollId,
+      user_ids: []
+    };
+    await this.dynamoDbClient.updateItem<GroupSchema>(this.getCompositeKey(chatId), { [pollKey]: pollValue });
   }
 
   getCompositeKey(chatId: number, isDeleted = false) {
@@ -178,7 +183,7 @@ export class MooVBot extends BaseBot {
     const maxVoteOptionsCount = 10;
     const voteMessage = 'Which Movie would you like to watch today?';
     const listOfUsers = (await this.getItem<GroupSchema>(chatId))?.votes?.participants?.user_ids;
-    if (!listOfUsers) return this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
+    if (listOfUsers?.length == 0) return this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
 
     const usersQueryParams = listOfUsers.map(user => this.getCompositeKey(user));
     const allWatchersData = await this.dynamoDbClient.batchGetItem<UserSchema>(usersQueryParams);
@@ -198,7 +203,19 @@ export class MooVBot extends BaseBot {
     const voteMessage = 'Will you join us today to watch the Movie?';
     const voteOptions = ['Yes, I do!', 'Nope', 'Will consider'];
     const response = await this.sendToTelegramPoll(chatId, voteMessage, voteOptions, { is_anonymous: false });
-    const pollId = response.result.poll.id;
+    const pollId = +response.result.poll.id;
     await this.setCurrentPoll(chatId, pollId);
+  }
+
+  async getChatWithVote(pollId: number) {
+    return this.dynamoDbClient.scanFotItem<GroupSchema>([{ ['votes.participants.poll_id' as any]: pollId }]);
+  }
+
+  async addWatcher(chatWithVote: GroupSchema, userId: number) {
+    const compositeKey = this.getCompositeKey(chatWithVote.chat_id);
+    const watchers = [userId].concat(chatWithVote?.votes?.participants?.user_ids ?? []);
+    const newVotes = { participants: { user_ids: [...new Set(watchers)] } };
+    const userIdsKey = 'votes.participants.user_ids' as any;
+    await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: newVotes });
   }
 }

@@ -58,6 +58,38 @@ export class DynamoDbBase {
     return dataResponse?.Responses?.[this.dbTitle] as T[];
   }
 
+  // TODO: improve typing for compositeKeys
+  async scanFotItem<T extends Record<string, any>>(inputData: Partial<T>[]): Promise<T[]> {
+    let dataResponse;
+
+    const attributes = inputData.flatMap(el => Object.keys(el));
+
+    const params = {
+      TableName: this.dbTitle,
+      FilterExpression: '',
+      ExpressionAttributeNames: {} as Record<string, string>,
+      ExpressionAttributeValues: {} as Record<string, any>
+    };
+
+    attributes.forEach((key, i) => {
+      const expressionKey = `#param_${i}`;
+      const expressionValue = `:value_${i}`;
+
+      params.ExpressionAttributeNames[expressionKey] = key;
+      params.ExpressionAttributeValues[expressionValue] = inputData[i][key];
+      params.FilterExpression += (!i ? '' : ' AND ') + `${expressionKey} = ${expressionValue}`;
+    });
+
+    try {
+      dataResponse = await this.docClient.scan(params).promise();
+      console.log(`Scanning DynamoDB: `, dataResponse?.Items);
+    } catch (err) {
+      console.error(`Error scanning "${this.dbTitle}" DynamoDB: `, err);
+    }
+
+    return dataResponse?.Items as T[];
+  }
+
   async removeItem<T extends Record<string, any>>(compositeKey: Partial<T>, removeProperty: string) {
     const removeParams = {
       TableName: this.dbTitle,
