@@ -25,7 +25,7 @@ export interface GroupSchema extends CompositeKey {
   votes: {
     participants: {
       active: boolean;
-      poll_id: number;
+      poll_id: string;
       user_ids: number[];
     };
   };

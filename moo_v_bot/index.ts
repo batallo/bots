@@ -17,7 +17,7 @@ export async function handler(event: any) {
   if (innerValue) console.log('Received next Inner Value: ', innerValue);
   if (pollAnswer) {
     console.log('Received next Poll Answer: ', pollAnswer);
-    const voteChat = (await mooVBot.getChatWithVote(+pollAnswer.poll_id)).at(0);
+    const voteChat = (await mooVBot.getChatWithVote(pollAnswer.poll_id)).at(0);
     const userId: number = pollAnswer.user.id;
     if (voteChat) await mooVBot.addWatcher(voteChat, userId);
   }

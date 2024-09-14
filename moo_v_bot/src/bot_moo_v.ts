@@ -35,7 +35,7 @@ export class MooVBot extends BaseBot {
     await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForMovieInput: inlineMessageId });
   }
 
-  async setCurrentPoll(chatId: number, pollId: number) {
+  async setCurrentPoll(chatId: number, pollId: string) {
     // TODO: update type for updateItem to allow composite keys for updateProperty param
     const pollKey = 'votes.participants' as any;
     const pollValue: GroupSchema['votes']['participants'] = {
@@ -64,7 +64,7 @@ export class MooVBot extends BaseBot {
       votes: {
         participants: {
           active: false,
-          poll_id: 0,
+          poll_id: '',
           user_ids: []
         }
       }
@@ -203,11 +203,11 @@ export class MooVBot extends BaseBot {
     const voteMessage = 'Will you join us today to watch the Movie?';
     const voteOptions = ['Yes, I do!', 'Nope', 'Will consider'];
     const response = await this.sendToTelegramPoll(chatId, voteMessage, voteOptions, { is_anonymous: false });
-    const pollId = +response.result.poll.id;
+    const pollId: string = response.result.poll.id;
     await this.setCurrentPoll(chatId, pollId);
   }
 
-  async getChatWithVote(pollId: number) {
+  async getChatWithVote(pollId: string) {
     return this.dynamoDbClient.scanFotItem<GroupSchema>([{ ['votes.participants.poll_id' as any]: pollId }]);
   }
 
