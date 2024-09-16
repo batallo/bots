@@ -2,6 +2,7 @@ import { MooVBot } from './src';
 import { UserSchema } from './types';
 
 const mooVBot = new MooVBot(process.env.TOKEN_BOT_MOO_V as string);
+const masterUserId = parseInt(process.env.MASTER_ID as string);
 
 export async function handler(event: any) {
   const request = event.body && JSON.parse(event.body);
@@ -15,7 +16,7 @@ export async function handler(event: any) {
   const innerValue = request.message || request.callback_query?.message || request.channel_post;
   const pollAnswer = request.poll_answer;
   if (innerValue) console.log('Received next Inner Value: ', innerValue);
-  if (pollAnswer?.option_ids?.every((el:number) =>el == 0)) {
+  if (pollAnswer?.option_ids?.every((el: number) => el == 0)) {
     console.log('Received next Poll Answer: ', pollAnswer);
     const voteChat = (await mooVBot.getChatWithVote(pollAnswer.poll_id)).at(0);
     const userId: number = pollAnswer.user.id;
@@ -37,11 +38,11 @@ export async function handler(event: any) {
 
     // GROUP CHAT
     if (!isPrivateChat) {
-      const user = innerValue.from.id;
+      const user: number = innerValue.from.id;
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
-      if (mooVBot.isVoteWatchersCommand(inputMessage) && user == (process.env.MASTER_ID as any)) return await mooVBot.startVoteWatchers(chatId);
-      if (mooVBot.isVoteMoviesCommand(inputMessage) && user == (process.env.MASTER_ID as any)) return await mooVBot.startVoteMovies(chatId);
+      if (mooVBot.isVoteWatchersCommand(inputMessage) && user == masterUserId) return await mooVBot.startVoteWatchers(chatId);
+      if (mooVBot.isVoteMoviesCommand(inputMessage) && user == masterUserId) return await mooVBot.startVoteMovies(chatId);
     }
 
     // PRIVATE CHAT
@@ -72,7 +73,7 @@ export async function handler(event: any) {
         return await mooVBot.inlineList(chatId);
       }
 
-      if (request.message && chatId == (process.env.MASTER_ID as any)) {
+      if (request.message && chatId == masterUserId) {
         const rythme = mooVBot.getRythme(inputMessage);
         return await mooVBot.sendToTelegram(chatId, rythme);
       }

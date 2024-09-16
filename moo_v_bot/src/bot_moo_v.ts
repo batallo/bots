@@ -8,7 +8,7 @@ export class MooVBot extends BaseBot {
 
   constructor(token: string) {
     super('moo_v_bot', token);
-    this.maxMoviesCount = 3;
+    this.maxMoviesCount = parseInt(process.env.MAX_MOVIE_COUNT as string) || 3;
     this.maxMovieTitleLength = 100;
   }
 
