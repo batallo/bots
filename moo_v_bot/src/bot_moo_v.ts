@@ -1,6 +1,6 @@
 import { BaseBot } from '../../common/bot_base';
 import { InlineKeyboard, TelegramSendParam } from '../../common/types';
-import { UserSchema } from '../types';
+import { GroupSchema, UserSchema } from '../types';
 
 export class MooVBot extends BaseBot {
   private maxMoviesCount: number;
@@ -8,7 +8,7 @@ export class MooVBot extends BaseBot {
 
   constructor(token: string) {
     super('moo_v_bot', token);
-    this.maxMoviesCount = 3;
+    this.maxMoviesCount = parseInt(process.env.MAX_MOVIE_COUNT as string) || 3;
     this.maxMovieTitleLength = 100;
   }
 
@@ -21,21 +21,58 @@ export class MooVBot extends BaseBot {
     return input?.match(/^remove_\d$/);
   }
 
-  async isWaitingMovieInput(chatId: number) {
-    const compositeKey = this.getCompositeKey(chatId);
-    const userData = await this.dynamoDbClient.getItem<UserSchema>(compositeKey);
-    return userData?.waitForMovieInput;
+  isVoteMoviesCommand(input: string) {
+    const startRegExp = new RegExp(`^/voteMovie(@${this.botName})?$`);
+    return startRegExp.test(input);
+  }
+
+  isVoteWatchersCommand(input: string) {
+    const startRegExp = new RegExp(`^/voteWatch(@${this.botName})?$`);
+    return startRegExp.test(input);
   }
 
   async setWaitForMovieInput(chatId: number, inlineMessageId: number = 0) {
     await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForMovieInput: inlineMessageId });
   }
 
+  async setCurrentPoll(chatId: number, pollId: string) {
+    // TODO: update type for updateItem to allow composite keys for updateProperty param
+    const pollKey = 'votes.participants' as any;
+    const pollValue: GroupSchema['votes']['participants'] = {
+      active: true,
+      poll_id: pollId,
+      user_ids: []
+    };
+    await this.dynamoDbClient.updateItem<GroupSchema>(this.getCompositeKey(chatId), { [pollKey]: pollValue });
+  }
+
   getCompositeKey(chatId: number, isDeleted = false) {
     return { chat_id: chatId, deleted: +isDeleted };
   }
 
-  //TO DO: update userInputData type
+  // TODO: update groupInputData type
+  async addGroup(groupInputData: any) {
+    const groupData: GroupSchema = {
+      chat_id: groupInputData.id,
+      deleted: 0,
+      group_data: {
+        group_name: groupInputData.username,
+        group_title: groupInputData.title,
+        timeUserAdded: new Date().getTime(),
+        timeUserLastAction: new Date().getTime()
+      },
+      votes: {
+        participants: {
+          active: false,
+          poll_id: '',
+          user_ids: []
+        }
+      }
+    };
+    return await this.dynamoDbClient.addItem<GroupSchema>(groupData);
+  }
+
+  // TODO: update userInputData type
   async addUser(userInputData: any) {
     const userData: UserSchema = {
       chat_id: userInputData.id,
@@ -72,9 +109,13 @@ export class MooVBot extends BaseBot {
     return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId });
   }
 
-  async getMoviesList(chatId: number) {
+  async getItem<T extends UserSchema | GroupSchema>(chatId: number) {
     const compositeKey = this.getCompositeKey(chatId);
-    const userData = await this.dynamoDbClient.getItem<UserSchema>(compositeKey);
+    return await this.dynamoDbClient.getItem<T>(compositeKey as Partial<T>);
+  }
+
+  async getMoviesList(chatId: number) {
+    const userData = await this.getItem<UserSchema>(chatId);
     return userData?.movies;
   }
 
@@ -136,5 +177,44 @@ export class MooVBot extends BaseBot {
     console.log('Keyboard props: ', inlineParams);
 
     await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+  }
+
+  async startVoteMovies(chatId: number) {
+    const maxVoteOptionsCount = 10;
+    const voteMessage = 'Which Movie would you like to watch today?';
+    const listOfUsers = (await this.getItem<GroupSchema>(chatId))?.votes?.participants?.user_ids;
+    if (listOfUsers?.length == 0) return this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
+
+    const usersQueryParams = listOfUsers.map(user => this.getCompositeKey(user));
+    const allWatchersData = await this.dynamoDbClient.batchGetItem<UserSchema>(usersQueryParams);
+    const allMovies = allWatchersData?.flatMap(user => user.movies);
+    if (allMovies == undefined || allMovies?.length == 0) return this.sendToTelegram(chatId, 'It is up to you, which movie to watch!');
+
+    const voteOptions: string[] = [];
+    do {
+      const randomIndex = Math.floor(allMovies.length * Math.random());
+      voteOptions.push(...allMovies.splice(randomIndex, 1));
+    } while (allMovies.length && voteOptions.length < maxVoteOptionsCount);
+
+    return await this.sendToTelegramPoll(chatId, voteMessage, voteOptions, { is_anonymous: false, allows_multiple_answers: true });
+  }
+
+  async startVoteWatchers(chatId: number) {
+    const voteMessage = 'Will you join us today to watch the Movie?';
+    const voteOptions = ['Yes, I do!', 'Nope', 'Will consider'];
+    const response = await this.sendToTelegramPoll(chatId, voteMessage, voteOptions, { is_anonymous: false });
+    const pollId: string = response.result.poll.id;
+    await this.setCurrentPoll(chatId, pollId);
+  }
+
+  async getChatWithVote(pollId: string) {
+    return this.dynamoDbClient.scanFotItem<GroupSchema>([{ ['votes.participants.poll_id' as any]: pollId }]);
+  }
+
+  async addWatcher(chatWithVote: GroupSchema, userId: number) {
+    const compositeKey = this.getCompositeKey(chatWithVote.chat_id);
+    const watchers = [userId].concat(chatWithVote?.votes?.participants?.user_ids ?? []);
+    const userIdsKey = 'votes.participants.user_ids' as any;
+    await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: [...new Set(watchers)] });
   }
 }
