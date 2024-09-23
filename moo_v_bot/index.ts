@@ -42,8 +42,15 @@ export async function handler(event: any) {
       const isAdmin = async () => await mooVBot.isUserAdmin(chatId, user);
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
-      if (mooVBot.isVoteWatchersCommand(inputMessage) && (await isAdmin())) return await mooVBot.startVoteWatchers(chatId);
-      if (mooVBot.isVoteMoviesCommand(inputMessage) && (await isAdmin())) return await mooVBot.startVoteMovies(chatId);
+      if (mooVBot.isVoteWatchersCommand(inputMessage))
+        return (await isAdmin())
+          ? await mooVBot.startVoteWatchers(chatId)
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote');
+
+      if (mooVBot.isVoteMoviesCommand(inputMessage))
+        return (await isAdmin())
+          ? await mooVBot.startVoteMovies(chatId)
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote');
     }
 
     // PRIVATE CHAT
