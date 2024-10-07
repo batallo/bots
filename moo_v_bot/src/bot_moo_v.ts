@@ -1,15 +1,18 @@
 import { BaseBot } from '../../common/bot_base';
 import { InlineKeyboard, TelegramSendParam } from '../../common/types';
 import { GroupSchema, UserSchema } from '../types';
+import { Rezka } from './rezka';
 
 export class MooVBot extends BaseBot {
   private maxMoviesCount: number;
   private maxMovieTitleLength: number;
+  private rezkaClient: Rezka;
 
   constructor(token: string) {
     super('moo_v_bot', token);
     this.maxMoviesCount = parseInt(process.env.MAX_MOVIE_COUNT as string) || 3;
     this.maxMovieTitleLength = 100;
+    this.rezkaClient = new Rezka();
   }
 
   isGetListCommand(input: string) {
@@ -216,5 +219,17 @@ export class MooVBot extends BaseBot {
     const watchers = [userId].concat(chatWithVote?.votes?.participants?.user_ids ?? []);
     const userIdsKey = 'votes.participants.user_ids' as any;
     await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: [...new Set(watchers)] });
+  }
+
+  async rezkaSearchMovies(movieTitle: string, page?: number) {
+    return await this.rezkaClient.searchMovies(movieTitle, page);
+  }
+
+  async rezkaGetMovieInfoById(id: number) {
+    return await this.rezkaClient.getMovieInfoById(id);
+  }
+
+  async rezkaGetFullMovieInfoByUrl(movieLink: string) {
+    return await this.rezkaClient.getMovieFullInfoByUrl(movieLink);
   }
 }
