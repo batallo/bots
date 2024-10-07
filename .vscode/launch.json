@@ -1,0 +1,13 @@
+{
+  "configurations": [
+    {
+      "name": "Debug",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "ts-node",
+      "args": ["./layer_output/rock_paper_scissors.spec.ts"],
+      "console": "integratedTerminal",
+      "outputCapture": "std"
+    }
+  ]
+}

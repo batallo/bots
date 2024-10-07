@@ -15,7 +15,7 @@ export async function handler(event: any) {
 
   const innerValue = request.message || request.callback_query?.message || request.channel_post;
   const pollAnswer = request.poll_answer;
-  if (innerValue) console.log('Received next Inner Value: ', innerValue);
+
   if (pollAnswer?.option_ids?.every((el: number) => el == 0)) {
     console.log('Received next Poll Answer: ', pollAnswer);
     const voteChat = (await mooVBot.getChatWithVote(pollAnswer.poll_id)).at(0);
@@ -24,6 +24,7 @@ export async function handler(event: any) {
   }
 
   if (innerValue) {
+    console.log('Received next Inner Value: ', innerValue);
     const chatId: number = innerValue.chat.id;
     const inputMessage: string = innerValue.text;
     const callbackData: string = request.callback_query?.data;
