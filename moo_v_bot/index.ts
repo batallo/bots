@@ -45,17 +45,17 @@ export async function handler(event: any) {
       const isAdmin = async () => await mooVBot.isUserAdmin(chatId, user);
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
-      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineMenuGroup(chatId);
+      if (mooVBot.isStartCommand(inputMessage)) return await mooVBot.inlineMenuGroup(chatId); // TODO: update with some message
+      if (mooVBot.isMenuCommand(inputMessage))
+        return (await isAdmin())
+          ? await mooVBot.inlineMenuGroup(chatId)
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
 
       if (callbackData == 'vote_watchers')
-        return (await isAdmin())
-          ? await Promise.all([mooVBot.startVoteWatchers(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)])
-          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
+        await Promise.all([mooVBot.startVoteWatchers(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)]);
 
       if (callbackData == 'vote_movies')
-        return (await isAdmin())
-          ? await Promise.all([mooVBot.startVoteMovies(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)])
-          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
+        await Promise.all([mooVBot.startVoteMovies(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)]);
     }
 
     // PRIVATE CHAT
