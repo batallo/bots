@@ -23,6 +23,11 @@ export class BaseBot {
     return startRegExp.test(input);
   }
 
+  isMenuCommand(input: string) {
+    const startRegExp = new RegExp(`^/menu(@${this.botName})?$`);
+    return startRegExp.test(input);
+  }
+
   async sendToTelegram(chatId: number, message: string, options?: TelegramSendParam) {
     const urlEnding = options?.updateMessageId ? 'editMessageText' : 'sendMessage';
     const response = await axios
@@ -48,6 +53,20 @@ export class BaseBot {
         question: pollQuestion,
         options: pollOptions,
         ...settings
+      })
+      .catch(err => {
+        const errorNotice = '-=ERROR ********** ERROR=-';
+        console.error(errorNotice + '\n' + err.response.data + '\n' + errorNotice);
+        throw new Error(err);
+      });
+    return response?.data;
+  }
+
+  async deleteTelegramMessage(chatId: number, messageId: number) {
+    const response = await axios
+      .post(`${this.telegramUrl}/deleteMessage`, {
+        chat_id: chatId,
+        message_id: messageId
       })
       .catch(err => {
         const errorNotice = '-=ERROR ********** ERROR=-';

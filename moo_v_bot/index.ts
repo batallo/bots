@@ -37,28 +37,32 @@ export async function handler(event: any) {
     const inlineWaitsMovieInput = knownData?.waitForMovieInput;
     // TODO
 
+    if (callbackData == 'inline_cancel') return await mooVBot.deleteTelegramMessage(chatId, innerValue.message_id);
+
     // GROUP CHAT
     if (!isPrivateChat) {
       const user: number = innerValue.from.id;
       const isAdmin = async () => await mooVBot.isUserAdmin(chatId, user);
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
-      if (mooVBot.isVoteWatchersCommand(inputMessage))
-        return (await isAdmin())
-          ? await mooVBot.startVoteWatchers(chatId)
-          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote');
+      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineMenuGroup(chatId);
 
-      if (mooVBot.isVoteMoviesCommand(inputMessage))
+      if (callbackData == 'vote_watchers')
         return (await isAdmin())
-          ? await mooVBot.startVoteMovies(chatId)
-          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote');
+          ? await Promise.all([mooVBot.startVoteWatchers(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)])
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
+
+      if (callbackData == 'vote_movies')
+        return (await isAdmin())
+          ? await Promise.all([mooVBot.startVoteMovies(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)])
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
     }
 
     // PRIVATE CHAT
     if (isPrivateChat) {
       if (missingInDb) await mooVBot.addUser(innerValue.chat);
 
-      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isGetListCommand(inputMessage)) return await mooVBot.inlineList(chatId);
+      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineList(chatId);
 
       if (callbackData == 'add_cancel') {
         await mooVBot.setWaitForMovieInput(chatId, 0);
