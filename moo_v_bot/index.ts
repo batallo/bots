@@ -39,29 +39,32 @@ export async function handler(event: any) {
 
     if (callbackData == 'inline_cancel') return await mooVBot.deleteTelegramMessage(chatId, innerValue.message_id);
 
+    if (callbackData == 'inline_cancel') return await mooVBot.deleteTelegramMessage(chatId, innerValue.message_id);
+
     // GROUP CHAT
     if (!isPrivateChat) {
       const user: number = innerValue.from.id;
       const isAdmin = async () => await mooVBot.isUserAdmin(chatId, user);
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
-      if (mooVBot.isStartCommand(inputMessage)) return await mooVBot.inlineMenuGroup(chatId); // TODO: update with some message
-      if (mooVBot.isMenuCommand(inputMessage))
-        return (await isAdmin())
-          ? await mooVBot.inlineMenuGroup(chatId)
-          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
+      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineMenuGroup(chatId);
 
       if (callbackData == 'vote_watchers')
-        await Promise.all([mooVBot.startVoteWatchers(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)]);
+        return (await isAdmin())
+          ? await Promise.all([mooVBot.startVoteWatchers(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)])
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
 
       if (callbackData == 'vote_movies')
-        await Promise.all([mooVBot.startVoteMovies(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)]);
+        return (await isAdmin())
+          ? await Promise.all([mooVBot.startVoteMovies(chatId), mooVBot.deleteTelegramMessage(chatId, innerValue.message_id)])
+          : await mooVBot.sendToTelegram(chatId, 'Only Group Admins could start a vote', { updateMessageId: innerValue.message_id });
     }
 
     // PRIVATE CHAT
     if (isPrivateChat) {
       if (missingInDb) await mooVBot.addUser(innerValue.chat);
 
+      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineList(chatId);
       if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineList(chatId);
 
       if (callbackData == 'add_cancel') {
