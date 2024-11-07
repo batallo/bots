@@ -12,23 +12,8 @@ export class MooVBot extends BaseBot {
     this.maxMovieTitleLength = 100;
   }
 
-  isGetListCommand(input: string) {
-    const startRegExp = new RegExp(`^/getList(@${this.botName})?$`);
-    return startRegExp.test(input);
-  }
-
   isRemoveMovieCommand(input: string) {
     return input?.match(/^remove_\d$/);
-  }
-
-  isVoteMoviesCommand(input: string) {
-    const startRegExp = new RegExp(`^/voteMovie(@${this.botName})?$`);
-    return startRegExp.test(input);
-  }
-
-  isVoteWatchersCommand(input: string) {
-    const startRegExp = new RegExp(`^/voteWatch(@${this.botName})?$`);
-    return startRegExp.test(input);
   }
 
   async setWaitForMovieInput(chatId: number, inlineMessageId: number = 0) {
@@ -130,6 +115,19 @@ export class MooVBot extends BaseBot {
     } catch (err) {
       await this.sendToTelegram(chatId, swwMessage, { updateMessageId: options?.updateMessageId });
     }
+  }
+
+  async inlineMenuGroup(chatId: number, options?: TelegramSendParam) {
+    const message = 'What vote do you want to start?';
+
+    const voteWatchers: InlineKeyboard[] = [{ text: 'Vote for Watchers', callback_data: 'vote_watchers' }];
+    const voteMovies: InlineKeyboard[] = [{ text: 'Vote for Movie', callback_data: 'vote_movies' }];
+    const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'inline_cancel' }];
+
+    let inlineParams = [voteWatchers, voteMovies, cancel];
+    console.log('Keyboard props: ', inlineParams);
+
+    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
   }
 
   async inlineAdd(chatId: number, options?: TelegramSendParam) {
