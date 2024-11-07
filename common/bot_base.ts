@@ -40,7 +40,7 @@ export class BaseBot {
       })
       .catch(err => {
         const errorNotice = '-=ERROR ********** ERROR=-';
-        console.error(errorNotice + '\n' + err.response.data + '\n' + errorNotice);
+        console.error(errorNotice + '\n' + JSON.stringify(err.response.data) + '\n' + errorNotice);
         throw new Error(err);
       });
     return response?.data;
