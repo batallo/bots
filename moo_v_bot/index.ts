@@ -35,6 +35,7 @@ export async function handler(event: any) {
     const knownData = await mooVBot.getItem<UserSchema>(chatId);
     const missingInDb = knownData == undefined;
     const inlineWaitsMovieInput = knownData?.waitForMovieInput;
+    const inlineWaitsStreamingInput = knownData?.waitForStreamingInput;
     // TODO
 
     if (callbackData == 'inline_cancel') return await mooVBot.deleteTelegramMessage(chatId, innerValue.message_id);
@@ -62,7 +63,10 @@ export async function handler(event: any) {
     if (isPrivateChat) {
       if (missingInDb) await mooVBot.addUser(innerValue.chat);
 
-      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineList(chatId);
+      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage) || callbackData == 'private_menu_streaming_cancel_search')
+        return await mooVBot.inlineMenuPrivate(chatId);
+
+      if (callbackData == 'private_menu_list') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
 
       if (callbackData == 'add_cancel') {
         await mooVBot.setWaitForMovieInput(chatId, 0);
@@ -85,6 +89,16 @@ export async function handler(event: any) {
         await mooVBot.addMovie(chatId, inputMessage, { updateMessageId: inlineWaitsMovieInput });
         return await mooVBot.inlineList(chatId);
       }
+
+      if (callbackData == 'private_menu_streaming') {
+        if (inlineWaitsStreamingInput) await mooVBot.setWaitForStreamingInput(chatId, 0);
+        return await mooVBot.inlineMenuPrivateStreaming(chatId, { updateMessageId: innerValue.message_id });
+      }
+      if (callbackData == 'private_menu_streaming_search')
+        return await mooVBot.inlineStreamingSearch(chatId, { updateMessageId: innerValue.message_id });
+      if (/^\d+$/.test(callbackData)) return await mooVBot.inlineMenuPrivateStreaming(chatId, { updateMessageId: innerValue.message_id }); //temp for search
+
+      if (inlineWaitsStreamingInput && inputMessage) return await mooVBot.inlineStreamingSearchResult(chatId, inputMessage);
 
       if (request.message && chatId == masterUserId) {
         const rythme = mooVBot.getRythme(inputMessage);

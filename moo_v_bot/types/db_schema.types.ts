@@ -3,16 +3,25 @@ export interface CompositeKey {
   deleted: number;
 }
 
+interface UserData {
+  first_name: string;
+  last_name: string;
+  timeUserAdded: number;
+  timeUserLastAction: number;
+  username: string;
+}
+
+interface StreamingData {
+  ready: string[];
+  wait: string[];
+}
+
 export interface UserSchema extends CompositeKey {
   movies: string[];
-  user_data: {
-    first_name: string;
-    last_name: string;
-    timeUserAdded: number;
-    timeUserLastAction: number;
-    username: string;
-  };
-  waitForMovieInput: number;
+  user_data: UserData;
+  streaming: StreamingData;
+  waitForMovieInput: number; // TO DO: consider changing to boolean,
+  waitForStreamingInput: number; // TO DO: consider changing to boolean
 }
 
 export interface GroupSchema extends CompositeKey {
