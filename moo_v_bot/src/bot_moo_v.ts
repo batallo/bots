@@ -274,19 +274,60 @@ export class MooVBot extends BaseBot {
     });
     inline.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
 
-    const message = searchResult.length
-      ? 'Вот что мне удалось найти по вашему запросу:'
-      : 'К сожалению мне ничего не удалось найти по вашему запросу';
+    const message = searchResult.length ? "That's what I have found:" : "Unfortunately I couldn't find anything with your query";
 
     await this.setWaitForStreamingInput(chatId, 0);
     return this.sendToTelegram(chatId, message, { inlineKeyboard: inline });
   }
 
-  async streamingGetMovieInfoById(id: number) {
-    return await this.streamingClient.getMovieInfoById(id);
-  }
+  async inlineStreamingMovieData(chatId: number, movieId: number, options?: TelegramSendParam) {
+    const megaTab = (tabLength = 8) => '\t'.repeat(tabLength);
+    const movieLinkData = await this.streamingClient.getMovieInfoById(movieId);
+    if (!movieLinkData.link) {
+      const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
+      return this.sendToTelegram(chatId, 'Sorry, no data for the movie', { updateMessageId: options?.updateMessageId, inlineKeyboard: [inline] });
+    }
 
-  async streamingGetFullMovieInfoByUrl(movieLink: string) {
-    return await this.streamingClient.getMovieFullInfoByUrl(movieLink);
+    const movieData = await this.streamingClient.getMovieFullInfoByUrl(movieLinkData.link);
+
+    function appendLine(title: string | undefined, data: string | undefined, option = { spoiler: false }) {
+      const extraStartTag = option.spoiler ? '<tg-spoiler>' : '';
+      const extraFinishTag = option.spoiler ? '</tg-spoiler>' : '';
+      const titleText = `<b>${megaTab() + title}:</b>\t\t`;
+      const contentText = extraStartTag + data + extraFinishTag;
+      return data && title ? titleText + contentText : '';
+    }
+    const title = `<b><a href="${movieData.link}">${movieData.name}</a></b>`;
+    const statusInfo = movieData.status ? `\t\t<i>(${movieData.status.trim().toLowerCase()})</i>` : '';
+    function getRate(rateSource: 'IMDb' | 'Кинопоиск', sourceData: typeof movieData.rates.imdb) {
+      const sourceText = `<u>${rateSource}</u>: `;
+      const dataText = sourceData.rate ? `<b>${sourceData.rate}</b> <i>${sourceData.votes || 0}</i>` : '—';
+      return sourceText + dataText;
+    }
+    const imdbRates = getRate('IMDb', movieData.rates.imdb);
+    const kpRates = getRate('Кинопоиск', movieData.rates.kp);
+    const ratesData = imdbRates + megaTab(2) + kpRates;
+    const otherPartsData = movieData.otherParts
+      .map(el => `\n${megaTab(10)}•\t<a href="${el.link}">${el.title}</a> – ${el.year} (${el.rating})`)
+      .join('');
+    const message = [
+      'Доступная информация о картине:\n',
+      appendLine('Название', title + statusInfo),
+      appendLine('Оригинальное название', movieData.originalName),
+      appendLine('Доступный эпизод', movieData.currentEpisode),
+      appendLine('Рейтинги', ratesData),
+      appendLine('Дата выхода', movieData.releaseDate),
+      appendLine('Страна', movieData.country),
+      appendLine('Режиссер', movieData.directors),
+      appendLine('Жанр', movieData.genre),
+      appendLine('Время', movieData.chrono),
+      appendLine('В ролях актеры', movieData.cast),
+      appendLine('Описание', movieData.description, { spoiler: true }),
+      appendLine('В переводе', movieData.translations),
+      appendLine(movieData.otherPartsHeader, otherPartsData)
+    ];
+    // poster - no need
+    const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
+    this.sendToTelegram(chatId, message.filter(el => el).join('\n'), { updateMessageId: options?.updateMessageId, inlineKeyboard: [inline] });
   }
 }
