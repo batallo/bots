@@ -215,12 +215,12 @@ export class MooVBot extends BaseBot {
     const maxVoteOptionsCount = 10;
     const voteMessage = 'Which Movie would you like to watch today?';
     const listOfUsers = (await this.getItem<GroupSchema>(chatId))?.votes?.participants?.user_ids;
-    if (listOfUsers?.length == 0) return this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
+    if (listOfUsers?.length == 0) return await this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
 
     const usersQueryParams = listOfUsers.map(user => this.getCompositeKey(user));
     const allWatchersData = await this.dynamoDbClient.batchGetItem<UserSchema>(usersQueryParams);
     const allMovies = allWatchersData?.flatMap(user => user.movies);
-    if (allMovies == undefined || allMovies?.length == 0) return this.sendToTelegram(chatId, 'It is up to you, which movie to watch!');
+    if (allMovies == undefined || allMovies?.length == 0) return await this.sendToTelegram(chatId, 'It is up to you, which movie to watch!');
 
     const voteOptions: string[] = [];
     do {
@@ -277,7 +277,7 @@ export class MooVBot extends BaseBot {
     const message = searchResult.length ? "That's what I have found:" : "Unfortunately I couldn't find anything with your query";
 
     await this.setWaitForStreamingInput(chatId, 0);
-    return this.sendToTelegram(chatId, message, { inlineKeyboard: inline });
+    return await this.sendToTelegram(chatId, message, { inlineKeyboard: inline });
   }
 
   async inlineStreamingMovieData(chatId: number, movieId: number, options?: TelegramSendParam) {
@@ -285,7 +285,10 @@ export class MooVBot extends BaseBot {
     const movieLinkData = await this.streamingClient.getMovieInfoById(movieId);
     if (!movieLinkData.link) {
       const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
-      return this.sendToTelegram(chatId, 'Sorry, no data for the movie', { updateMessageId: options?.updateMessageId, inlineKeyboard: [inline] });
+      return await this.sendToTelegram(chatId, 'Sorry, no data for the movie', {
+        updateMessageId: options?.updateMessageId,
+        inlineKeyboard: [inline]
+      });
     }
 
     const movieData = await this.streamingClient.getMovieFullInfoByUrl(movieLinkData.link);
@@ -328,6 +331,9 @@ export class MooVBot extends BaseBot {
     ];
     // poster - no need
     const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
-    this.sendToTelegram(chatId, message.filter(el => el).join('\n'), { updateMessageId: options?.updateMessageId, inlineKeyboard: [inline] });
+    return await this.sendToTelegram(chatId, message.filter(el => el).join('\n'), {
+      updateMessageId: options?.updateMessageId,
+      inlineKeyboard: [inline]
+    });
   }
 }

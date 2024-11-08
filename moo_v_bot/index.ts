@@ -98,9 +98,10 @@ export async function handler(event: any) {
       }
       if (callbackData == 'private_menu_streaming_search')
         return await mooVBot.inlineStreamingSearch(chatId, { updateMessageId: innerValue.message_id });
+
       if (/^\d+$/.test(callbackData)) {
         const movieId = +callbackData;
-        return await mooVBot.inlineStreamingMovieData(chatId, movieId, { updateMessageId: innerValue.message_id }); //temp for search
+        return await mooVBot.inlineStreamingMovieData(chatId, movieId, { updateMessageId: innerValue.message_id });
       }
 
       if (inlineWaitsStreamingInput && inputMessage) {
