@@ -100,7 +100,10 @@ export async function handler(event: any) {
         return await mooVBot.inlineStreamingSearch(chatId, { updateMessageId: innerValue.message_id });
       if (/^\d+$/.test(callbackData)) return await mooVBot.inlineMenuPrivateStreaming(chatId, { updateMessageId: innerValue.message_id }); //temp for search
 
-      if (inlineWaitsStreamingInput && inputMessage) return await mooVBot.inlineStreamingSearchResult(chatId, inputMessage);
+      if (inlineWaitsStreamingInput && inputMessage) {
+        await mooVBot.deleteTelegramMessage(chatId, inlineWaitsStreamingInput);
+        return await mooVBot.inlineStreamingSearchResult(chatId, inputMessage);
+      }
 
       if (request.message && chatId == masterUserId) {
         const rythme = mooVBot.getRythme(inputMessage);
