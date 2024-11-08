@@ -63,8 +63,10 @@ export async function handler(event: any) {
     if (isPrivateChat) {
       if (missingInDb) await mooVBot.addUser(innerValue.chat);
 
-      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage) || callbackData == 'private_menu_streaming_cancel_search')
-        return await mooVBot.inlineMenuPrivate(chatId);
+      if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineMenuPrivate(chatId);
+
+      if (callbackData == 'private_menu_streaming_cancel_search')
+        return await mooVBot.inlineMenuPrivate(chatId, { updateMessageId: innerValue.message_id });
 
       if (callbackData == 'private_menu_list') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });
 
