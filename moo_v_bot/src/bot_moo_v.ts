@@ -272,7 +272,7 @@ export class MooVBot extends BaseBot {
       ];
       return inline.push(button);
     });
-    inline.push([{ text: 'Cancel', callback_data: 'streaming_search_cancel' }]);
+    inline.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
 
     const message = searchResult.length
       ? 'Вот что мне удалось найти по вашему запросу:'
