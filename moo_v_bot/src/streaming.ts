@@ -2,7 +2,7 @@ import axios from 'axios';
 import { parse } from 'node-html-parser';
 
 export class Streaming {
-  private baseUrl = process.env.STREAMING_URL;
+  private baseUrl = process.env.STREAMING_URL as string;
   private maxSearchNumber = 10;
   private headers = { headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } };
 
@@ -84,7 +84,8 @@ export class Streaming {
     return searchCall?.data;
   }
 
-  async getMovieFullInfoByUrl(movieLink: string) {
+  async getMovieFullInfoByUrl(rawLink: string) {
+    const movieLink = rawLink.replace(/^(.+\/{2}[^\/]+)/g, this.baseUrl);
     const searchResult = await this.getMovieInfoByUrlRequest(movieLink);
     const doc = parse(searchResult);
     const contentElement = doc.querySelector('.b-container.b-wrapper');
