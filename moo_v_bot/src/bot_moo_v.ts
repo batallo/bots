@@ -84,7 +84,7 @@ export class MooVBot extends BaseBot {
       },
       streaming: {
         ready: [],
-        wait: []
+        await: []
       },
       waitForMovieInput: 0,
       waitForStreamingInput: 0
@@ -121,7 +121,7 @@ export class MooVBot extends BaseBot {
 
   async getWaitForReleaseMoviesList(chatId: number) {
     const userData = await this.getItem<UserSchema>(chatId);
-    return userData?.streaming?.wait;
+    return userData?.streaming?.await;
   }
 
   async removeMovie(chatId: number, movieIndex: string, options?: TelegramSendParam) {
@@ -358,7 +358,7 @@ export class MooVBot extends BaseBot {
     movies.push({ id: movieData.id, title: this.trimMovieNameToLength(movieData.title), link: movieData.link });
     const exceedsLimit = movies?.length > maxAwaitMoviesCount;
     const message = exceedsLimit ? exceedsListLimit : baseMessage;
-    const waitProp = 'streaming.wait' as any;
+    const waitProp = 'streaming.await' as any;
 
     if (!exceedsLimit) await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { [waitProp]: movies });
 

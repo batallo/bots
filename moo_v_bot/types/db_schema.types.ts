@@ -13,7 +13,7 @@ interface UserData {
 
 interface StreamingData {
   ready: Array<{ id: number; title: string; link: string }>;
-  wait: Array<{ id: number; title: string; link: string }>;
+  await: Array<{ id: number; title: string; link: string }>;
 }
 
 export interface UserSchema extends CompositeKey {
