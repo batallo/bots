@@ -98,7 +98,7 @@ export class BaseBot {
 
   getRythme(input: string) {
     const glasnye = 'а|е|ё|и|о|у|ы|э|ю|я';
-    const glasnyeInInput = input.match(new RegExp(glasnye));
+    const glasnyeInInput = input.match(new RegExp(glasnye, 'i'));
     if (!glasnyeInInput) return 'Не рифмуется';
 
     const letterMapper: Record<string, string> = {
@@ -109,8 +109,8 @@ export class BaseBot {
       э: 'е'
     };
 
-    const firstGlasnaya = glasnyeInInput[0];
-    const toReplace = new RegExp(`[^${glasnye}]*[${glasnye}]`);
+    const firstGlasnaya = glasnyeInInput[0].toLowerCase();
+    const toReplace = new RegExp(`[^${glasnye}]*[${glasnye}]`, 'i');
     const replacer = 'ху' + (letterMapper[firstGlasnaya] ?? firstGlasnaya);
     const output = input.replace(toReplace, replacer);
     return `${input} → ${output}`;

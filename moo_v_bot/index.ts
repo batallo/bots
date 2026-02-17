@@ -94,13 +94,15 @@ export async function handler(event: any) {
 
       if (callbackData == 'private_menu_streaming') {
         if (inlineWaitsStreamingInput) await mooVBot.setWaitForStreamingInput(chatId, 0);
-        return await mooVBot.inlineMenuPrivateStreaming(chatId, { updateMessageId: innerValue.message_id });
+        return await mooVBot.inlineMenuPrivateStreaming(chatId, undefined, { updateMessageId: innerValue.message_id });
       }
+
       if (callbackData == 'private_menu_streaming_search')
         return await mooVBot.inlineStreamingSearch(chatId, { updateMessageId: innerValue.message_id });
 
       if (/^\d+$/.test(callbackData)) {
         const movieId = +callbackData;
+        // TO DO: should delete search list here to avoid user clicking on several search results and spamming the service
         return await mooVBot.inlineStreamingMovieData(chatId, movieId, { updateMessageId: innerValue.message_id });
       }
 
@@ -108,6 +110,21 @@ export async function handler(event: any) {
         await mooVBot.deleteTelegramMessage(chatId, inlineWaitsStreamingInput);
         return await mooVBot.inlineStreamingSearchResult(chatId, inputMessage);
       }
+
+      if (/^add_\d+$/.test(callbackData) && chatId == masterUserId) {
+        const [movieId] = callbackData.match(/\d+$/)!;
+        const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
+        const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url
+        const movieData = {
+          id: +movieId,
+          title: movieName,
+          link: movieLink,
+        }
+
+        return await mooVBot.inlineStreamingAddWaitForReleaseMovie(chatId, movieData, { updateMessageId: innerValue.message_id })
+      }
+
+      if (callbackData == 'private_menu_streaming_await_list') return await mooVBot.inlineStreamingAwaitListMovies(chatId, { updateMessageId: innerValue.message_id });
 
       if (request.message && chatId == masterUserId) {
         const rythme = mooVBot.getRythme(inputMessage);

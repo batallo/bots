@@ -12,8 +12,8 @@ interface UserData {
 }
 
 interface StreamingData {
-  ready: string[];
-  wait: string[];
+  ready: Array<{ id: number; title: string; link: string }>;
+  wait: Array<{ id: number; title: string; link: string }>;
 }
 
 export interface UserSchema extends CompositeKey {
