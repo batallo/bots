@@ -1,23 +1,30 @@
 import { BaseBot } from '../../common/bot_base';
 import { InlineKeyboard, TelegramSendParam } from '../../common/types';
 import { GroupSchema, UserSchema } from '../types';
+import { Streaming } from './streaming';
 
 export class MooVBot extends BaseBot {
   private maxMoviesCount: number;
   private maxMovieTitleLength: number;
+  private streamingClient: Streaming;
 
   constructor(token: string) {
     super('moo_v_bot', token);
     this.maxMoviesCount = parseInt(process.env.MAX_MOVIE_COUNT as string) || 3;
     this.maxMovieTitleLength = 100;
+    this.streamingClient = new Streaming();
   }
 
   isRemoveMovieCommand(input: string) {
     return input?.match(/^remove_\d$/);
   }
 
-  async setWaitForMovieInput(chatId: number, inlineMessageId: number = 0) {
-    await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForMovieInput: inlineMessageId });
+  async setWaitForMovieInput(chatId: number, waitForMovieInput: number = 0) {
+    await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForMovieInput: waitForMovieInput });
+  }
+
+  async setWaitForStreamingInput(chatId: number, waitForStreamingInput: number = 0) {
+    await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { waitForStreamingInput: waitForStreamingInput });
   }
 
   async setCurrentPoll(chatId: number, pollId: string) {
@@ -70,7 +77,12 @@ export class MooVBot extends BaseBot {
         timeUserLastAction: new Date().getTime(),
         username: userInputData.username
       },
-      waitForMovieInput: 0
+      streaming: {
+        ready: [],
+        wait: []
+      },
+      waitForMovieInput: 0,
+      waitForStreamingInput: 0
     };
     return await this.dynamoDbClient.addItem<UserSchema>(userData);
   }
@@ -130,6 +142,19 @@ export class MooVBot extends BaseBot {
     return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
   }
 
+  async inlineMenuPrivate(chatId: number, options?: TelegramSendParam) {
+    const message = 'How can I help you?';
+
+    const getList: InlineKeyboard[] = [{ text: 'List to watch with friends', callback_data: 'private_menu_list' }];
+    const getStreaming: InlineKeyboard[] = [{ text: 'My personal list', callback_data: 'private_menu_streaming' }];
+    const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'inline_cancel' }];
+
+    let inlineParams = [getList, getStreaming, cancel];
+    console.log('Keyboard props: ', inlineParams);
+
+    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+  }
+
   async inlineAdd(chatId: number, options?: TelegramSendParam) {
     const baseMessage = 'Please type a movie title which you want to add in your list';
     const inlineParams: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'add_cancel' }];
@@ -137,6 +162,15 @@ export class MooVBot extends BaseBot {
 
     await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: [inlineParams] });
     await this.setWaitForMovieInput(chatId, options?.updateMessageId);
+  }
+
+  async inlineStreamingSearch(chatId: number, options?: TelegramSendParam) {
+    const baseMessage = 'What movie/series are you looking for?';
+    const inlineParams: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
+    console.log('Keyboard props: ', inlineParams);
+
+    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: [inlineParams] });
+    await this.setWaitForStreamingInput(chatId, options?.updateMessageId);
   }
 
   async inlineList(chatId: number, options?: TelegramSendParam) {
@@ -181,12 +215,12 @@ export class MooVBot extends BaseBot {
     const maxVoteOptionsCount = 10;
     const voteMessage = 'Which Movie would you like to watch today?';
     const listOfUsers = (await this.getItem<GroupSchema>(chatId))?.votes?.participants?.user_ids;
-    if (listOfUsers?.length == 0) return this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
+    if (listOfUsers?.length == 0) return await this.sendToTelegram(chatId, 'Nobody wants to watch movies today =[');
 
     const usersQueryParams = listOfUsers.map(user => this.getCompositeKey(user));
     const allWatchersData = await this.dynamoDbClient.batchGetItem<UserSchema>(usersQueryParams);
     const allMovies = allWatchersData?.flatMap(user => user.movies);
-    if (allMovies == undefined || allMovies?.length == 0) return this.sendToTelegram(chatId, 'It is up to you, which movie to watch!');
+    if (allMovies == undefined || allMovies?.length == 0) return await this.sendToTelegram(chatId, 'It is up to you, which movie to watch!');
 
     const voteOptions: string[] = [];
     do {
@@ -214,5 +248,92 @@ export class MooVBot extends BaseBot {
     const watchers = [userId].concat(chatWithVote?.votes?.participants?.user_ids ?? []);
     const userIdsKey = 'votes.participants.user_ids' as any;
     await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: [...new Set(watchers)] });
+  }
+
+  async inlineMenuPrivateStreaming(chatId: number, options?: TelegramSendParam) {
+    const message = 'How can I help you?';
+
+    const searchForMovie: InlineKeyboard[] = [{ text: 'Search for a movie', callback_data: 'private_menu_streaming_search' }];
+    const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'private_menu_streaming_cancel_search' }];
+
+    let inlineParams = [searchForMovie, cancel];
+    console.log('Keyboard props: ', inlineParams);
+
+    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+  }
+
+  async inlineStreamingSearchResult(chatId: number, movieTitle: string, page?: number) {
+    const searchResult = await this.streamingClient.searchMovies(movieTitle, page);
+
+    const inline: InlineKeyboard[][] = [];
+    searchResult.forEach(foundMovie => {
+      const button: InlineKeyboard[] = [
+        { text: `${foundMovie.title} (${foundMovie.type}, ${foundMovie.country}, ${foundMovie.year})`, callback_data: foundMovie.id }
+      ];
+      return inline.push(button);
+    });
+    inline.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
+
+    const message = searchResult.length ? "That's what I have found:" : "Unfortunately I couldn't find anything with your query";
+
+    await this.setWaitForStreamingInput(chatId, 0);
+    return await this.sendToTelegram(chatId, message, { inlineKeyboard: inline });
+  }
+
+  async inlineStreamingMovieData(chatId: number, movieId: number, options?: TelegramSendParam) {
+    const megaTab = (tabLength = 8) => '\t'.repeat(tabLength);
+    const movieLinkData = await this.streamingClient.getMovieInfoById(movieId);
+    if (!movieLinkData.link) {
+      const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
+      return await this.sendToTelegram(chatId, 'Sorry, no data for the movie', {
+        updateMessageId: options?.updateMessageId,
+        inlineKeyboard: [inline]
+      });
+    }
+
+    const movieData = await this.streamingClient.getMovieFullInfoByUrl(movieLinkData.link);
+
+    function appendLine(title: string | undefined, data: string | undefined, option = { spoiler: false }) {
+      const extraStartTag = option.spoiler ? '<tg-spoiler>' : '';
+      const extraFinishTag = option.spoiler ? '</tg-spoiler>' : '';
+      const titleText = `<b>${megaTab() + title}:</b>\t\t`;
+      const contentText = extraStartTag + data + extraFinishTag;
+      return data && title ? titleText + contentText : '';
+    }
+    const title = `<b><a href="${movieData.link}">${movieData.name}</a></b>`;
+    const statusInfo = movieData.status ? `\t\t<i>(${movieData.status.trim().toLowerCase()})</i>` : '';
+    function getRate(rateSource: 'IMDb' | 'Кинопоиск', sourceData: typeof movieData.rates.imdb) {
+      const sourceText = `<u>${rateSource}</u>: `;
+      const dataText = sourceData.rate ? `<b>${sourceData.rate}</b> <i>${sourceData.votes || 0}</i>` : '—';
+      return sourceText + dataText;
+    }
+    const imdbRates = getRate('IMDb', movieData.rates.imdb);
+    const kpRates = getRate('Кинопоиск', movieData.rates.kp);
+    const ratesData = imdbRates + megaTab(2) + kpRates;
+    const otherPartsData = movieData.otherParts
+      .map(el => `\n${megaTab(10)}•\t<a href="${el.link}">${el.title}</a> – ${el.year} (${el.rating})`)
+      .join('');
+    const message = [
+      'Доступная информация о картине:\n',
+      appendLine('Название', title + statusInfo),
+      appendLine('Оригинальное название', movieData.originalName),
+      appendLine('Доступный эпизод', movieData.currentEpisode),
+      appendLine('Рейтинги', ratesData),
+      appendLine('Дата выхода', movieData.releaseDate),
+      appendLine('Страна', movieData.country),
+      appendLine('Режиссер', movieData.directors),
+      appendLine('Жанр', movieData.genre),
+      appendLine('Время', movieData.chrono),
+      appendLine('В ролях актеры', movieData.cast),
+      appendLine('Описание', movieData.description, { spoiler: true }),
+      appendLine('В переводе', movieData.translations),
+      appendLine(movieData.otherPartsHeader, otherPartsData)
+    ];
+    // poster - no need
+    const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
+    return await this.sendToTelegram(chatId, message.filter(el => el).join('\n'), {
+      updateMessageId: options?.updateMessageId,
+      inlineKeyboard: [inline]
+    });
   }
 }
