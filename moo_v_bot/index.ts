@@ -40,8 +40,6 @@ export async function handler(event: any) {
 
     if (callbackData == 'inline_cancel') return await mooVBot.deleteTelegramMessage(chatId, innerValue.message_id);
 
-    if (callbackData == 'inline_cancel') return await mooVBot.deleteTelegramMessage(chatId, innerValue.message_id);
-
     // GROUP CHAT
     if (!isPrivateChat) {
       const user: number = innerValue.from.id;
