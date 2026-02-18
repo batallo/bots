@@ -275,7 +275,7 @@ export class MooVBot extends BaseBot {
     const inline: InlineKeyboard[][] = [];
     searchResult.forEach(foundMovie => {
       const button: InlineKeyboard[] = [
-        { text: `${foundMovie.title} (${foundMovie.type}, ${foundMovie.country}, ${foundMovie.year})`, callback_data: foundMovie.id }
+        { text: `${foundMovie.title} (${foundMovie.year}, ${foundMovie.type}, ${foundMovie.country})`, callback_data: foundMovie.id }
       ];
       return inline.push(button);
     });

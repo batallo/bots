@@ -111,7 +111,7 @@ export async function handler(event: any) {
         return await mooVBot.inlineStreamingSearchResult(chatId, inputMessage);
       }
 
-      if (/^add_\d+$/.test(callbackData) && chatId == masterUserId) {
+      if (/^add_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
         const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
         const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url
