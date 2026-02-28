@@ -288,7 +288,8 @@ export class MooVBot extends BaseBot {
     if (!movieLinkData.link) {
       const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
       return await this.sendToTelegram(chatId, 'Sorry, no data for the movie', {
-        updateMessageId: options?.updateMessageId, inlineKeyboard
+        updateMessageId: options?.updateMessageId,
+        inlineKeyboard
       });
     }
 
@@ -342,11 +343,10 @@ export class MooVBot extends BaseBot {
     });
   }
 
-  async inlineStreamingAddWaitForReleaseMovie(chatId: number, movieData: { id: number, title: string, link: string }, options?: TelegramSendParam) {
+  async inlineStreamingAddWaitForReleaseMovie(chatId: number, movieData: { id: number; title: string; link: string }, options?: TelegramSendParam) {
     const maxAwaitMoviesCount = this.maxMoviesCount * 2;
     const baseMessage = `<b>"${movieData.title}"</b> was successfully added to your list.\nYou will be notified when it becomes available.`;
     const exceedsListLimit = `Currently you could store no more than <b>${maxAwaitMoviesCount} movies</b> in your list`;
-
 
     const movies = await this.getWaitForReleaseMoviesList(chatId);
     movies[movieData.id] = { title: this.trimMovieNameToLength(movieData.title), link: movieData.link };
@@ -366,7 +366,9 @@ export class MooVBot extends BaseBot {
     const message = Object.keys(movies).length ? baseMessage : noItemsMessage;
     const inlineKeyboard: Array<InlineKeyboard[]> = [];
 
-    Object.entries(movies).forEach(([id, movie]: [string, StoredStreamingMovies[number]]) => inlineKeyboard.push([{ text: movie.title, callback_data: id }]));
+    Object.entries(movies).forEach(([id, movie]: [string, StoredStreamingMovies[number]]) =>
+      inlineKeyboard.push([{ text: movie.title, callback_data: id }])
+    );
     inlineKeyboard.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
 
     await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });

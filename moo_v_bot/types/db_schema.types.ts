@@ -15,7 +15,7 @@ export interface StoredStreamingMovies {
   [movieId: number]: {
     title: string;
     link: string;
-  }
+  };
 }
 
 interface StreamingData {

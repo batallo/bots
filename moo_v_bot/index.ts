@@ -114,17 +114,19 @@ export async function handler(event: any) {
       if (/^add_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
         const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
-        const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url
+        const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url;
+
         const movieData = {
           id: +movieId,
           title: movieName,
-          link: movieLink,
-        }
+          link: movieLink
+        };
 
-        return await mooVBot.inlineStreamingAddWaitForReleaseMovie(chatId, movieData, { updateMessageId: innerValue.message_id })
+        return await mooVBot.inlineStreamingAddWaitForReleaseMovie(chatId, movieData, { updateMessageId: innerValue.message_id });
       }
 
-      if (callbackData == 'private_menu_streaming_await_list') return await mooVBot.inlineStreamingAwaitListMovies(chatId, { updateMessageId: innerValue.message_id });
+      if (callbackData == 'private_menu_streaming_await_list')
+        return await mooVBot.inlineStreamingAwaitListMovies(chatId, { updateMessageId: innerValue.message_id });
 
       if (request.message && chatId == masterUserId) {
         const rythme = mooVBot.getRythme(inputMessage);
