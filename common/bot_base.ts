@@ -30,6 +30,8 @@ export class BaseBot {
 
   async sendToTelegram(chatId: number, message: string, options?: TelegramSendParam) {
     const urlEnding = options?.updateMessageId ? 'editMessageText' : 'sendMessage';
+    if (options?.inlineKeyboard) console.log('Keyboard props:', options.inlineKeyboard);
+
     const response = await axios
       .post(`${this.telegramUrl}/${urlEnding}`, {
         chat_id: chatId,

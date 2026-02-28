@@ -65,7 +65,7 @@ export async function handler(event: any) {
 
       if (mooVBot.isStartCommand(inputMessage) || mooVBot.isMenuCommand(inputMessage)) return await mooVBot.inlineMenuPrivate(chatId);
 
-      if (callbackData == 'private_menu_streaming_cancel_search')
+      if (callbackData == 'private_menu_streaming_cancel_search' || callbackData == 'list_cancel')
         return await mooVBot.inlineMenuPrivate(chatId, { updateMessageId: innerValue.message_id });
 
       if (callbackData == 'private_menu_list') return await mooVBot.inlineList(chatId, { updateMessageId: innerValue.message_id });

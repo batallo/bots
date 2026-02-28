@@ -1,6 +1,6 @@
 import { BaseBot } from '../../common/bot_base';
 import { InlineKeyboard, TelegramSendParam } from '../../common/types';
-import { GroupSchema, UserSchema } from '../types';
+import { GroupSchema, StoredStreamingMovies, UserSchema } from '../types';
 import { Streaming } from './streaming';
 
 export class MooVBot extends BaseBot {
@@ -83,8 +83,8 @@ export class MooVBot extends BaseBot {
         username: userInputData.username
       },
       streaming: {
-        ready: [],
-        await: []
+        ready: {},
+        await: {}
       },
       waitForMovieInput: 0,
       waitForStreamingInput: 0
@@ -144,10 +144,9 @@ export class MooVBot extends BaseBot {
     const voteMovies: InlineKeyboard[] = [{ text: 'Vote for Movie', callback_data: 'vote_movies' }];
     const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'inline_cancel' }];
 
-    let inlineParams = [voteWatchers, voteMovies, cancel];
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard = [voteWatchers, voteMovies, cancel];
 
-    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
 
   async inlineMenuPrivate(chatId: number, options?: TelegramSendParam) {
@@ -157,27 +156,24 @@ export class MooVBot extends BaseBot {
     const getStreaming: InlineKeyboard[] = [{ text: 'My personal list', callback_data: 'private_menu_streaming' }];
     const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'inline_cancel' }];
 
-    let inlineParams = [getList, getStreaming, cancel];
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard = [getList, getStreaming, cancel];
 
-    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
 
   async inlineAdd(chatId: number, options?: TelegramSendParam) {
     const baseMessage = 'Please type a movie title which you want to add in your list';
-    const inlineParams: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'add_cancel' }];
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'add_cancel' }]];
 
-    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: [inlineParams] });
+    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard });
     await this.setWaitForMovieInput(chatId, options?.updateMessageId);
   }
 
   async inlineStreamingSearch(chatId: number, options?: TelegramSendParam) {
     const baseMessage = 'What movie/series are you looking for?';
-    const inlineParams: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
 
-    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: [inlineParams] });
+    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard });
     await this.setWaitForStreamingInput(chatId, options?.updateMessageId);
   }
 
@@ -190,16 +186,17 @@ export class MooVBot extends BaseBot {
 
     const inlineAdd: InlineKeyboard[] = [{ text: 'Add Movie', callback_data: 'list_add' }];
     const inlineRemove: InlineKeyboard[] = [{ text: 'Remove Movie', callback_data: 'list_remove' }];
+    const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'list_cancel' }];
 
     if (movies) movies.forEach(movie => (baseMessage += `\n\t• ${movie}`));
     const message = hasMovies ? baseMessage : noItemsMessage;
 
-    let inlineParams = [];
-    if (movies?.length < this.maxMoviesCount) inlineParams.push(inlineAdd);
-    if (hasMovies) inlineParams.push(inlineRemove);
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard: Array<InlineKeyboard[]> = [];
+    if (movies?.length < this.maxMoviesCount) inlineKeyboard.push(inlineAdd);
+    if (hasMovies) inlineKeyboard.push(inlineRemove);
+    inlineKeyboard.push(cancel);
 
-    await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+    await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
 
   async inlineRemove(chatId: number, options?: TelegramSendParam) {
@@ -212,11 +209,10 @@ export class MooVBot extends BaseBot {
 
     const inlineCancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'remove_cancel' }];
 
-    let inlineParams = movies?.map(constructRemoveOption);
-    inlineParams.push(inlineCancel);
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard = movies?.map(constructRemoveOption);
+    inlineKeyboard.push(inlineCancel);
 
-    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+    await this.sendToTelegram(chatId, baseMessage, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
 
   async startVoteMovies(chatId: number) {
@@ -263,38 +259,36 @@ export class MooVBot extends BaseBot {
     const awaitList: InlineKeyboard[] = [{ text: 'My await list', callback_data: 'private_menu_streaming_await_list' }];
     const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'private_menu_streaming_cancel_search' }];
 
-    let inlineParams = [searchForMovie, awaitList, cancel];
-    console.log('Keyboard props: ', inlineParams);
+    const inlineKeyboard = [searchForMovie, awaitList, cancel];
 
-    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard: inlineParams });
+    return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
 
   async inlineStreamingSearchResult(chatId: number, movieTitle: string, page?: number) {
     const searchResult = await this.streamingClient.searchMovies(movieTitle, page);
 
-    const inline: InlineKeyboard[][] = [];
+    const inlineKeyboard: Array<InlineKeyboard[]> = [];
     searchResult.forEach(foundMovie => {
       const button: InlineKeyboard[] = [
         { text: `${foundMovie.title} (${foundMovie.year}, ${foundMovie.type}, ${foundMovie.country})`, callback_data: foundMovie.id }
       ];
-      return inline.push(button);
+      return inlineKeyboard.push(button);
     });
-    inline.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
+    inlineKeyboard.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
 
     const message = searchResult.length ? "That's what I have found:" : "Unfortunately I couldn't find anything with your query";
 
     await this.setWaitForStreamingInput(chatId, 0);
-    return await this.sendToTelegram(chatId, message, { inlineKeyboard: inline });
+    return await this.sendToTelegram(chatId, message, { inlineKeyboard });
   }
 
   async inlineStreamingMovieData(chatId: number, movieId: number, options?: TelegramSendParam) {
     const megaTab = (tabLength = 8) => '\t'.repeat(tabLength);
     const movieLinkData = await this.streamingClient.getMovieInfoById(movieId);
     if (!movieLinkData.link) {
-      const inline = [{ text: 'Cancel', callback_data: 'private_menu_streaming' }];
+      const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
       return await this.sendToTelegram(chatId, 'Sorry, no data for the movie', {
-        updateMessageId: options?.updateMessageId,
-        inlineKeyboard: [inline]
+        updateMessageId: options?.updateMessageId, inlineKeyboard
       });
     }
 
@@ -337,14 +331,14 @@ export class MooVBot extends BaseBot {
       appendLine(movieData.otherPartsHeader, otherPartsData)
     ];
     // poster - no need
-    const inline = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
+    const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
 
-    if (statusInfo) inline.unshift([{ text: 'Wait for release', callback_data: `add_${movieId}` }]);
+    if (statusInfo) inlineKeyboard.unshift([{ text: 'Wait for release', callback_data: `add_${movieId}` }]);
 
     // TODO: implement logic to remove from my list if it was there and is already available (switch to wait/remove)
     return await this.sendToTelegram(chatId, message.filter(el => el).join('\n'), {
       updateMessageId: options?.updateMessageId,
-      inlineKeyboard: inline
+      inlineKeyboard
     });
   }
 
@@ -355,10 +349,10 @@ export class MooVBot extends BaseBot {
 
 
     const movies = await this.getWaitForReleaseMoviesList(chatId);
-    movies.push({ id: movieData.id, title: this.trimMovieNameToLength(movieData.title), link: movieData.link });
-    const exceedsLimit = movies?.length > maxAwaitMoviesCount;
+    movies[movieData.id] = { title: this.trimMovieNameToLength(movieData.title), link: movieData.link };
+    const exceedsLimit = Object.keys(movies).length > maxAwaitMoviesCount;
     const message = exceedsLimit ? exceedsListLimit : baseMessage;
-    const waitProp = 'streaming.await' as any;
+    const waitProp = 'streaming.await' as keyof UserSchema;
 
     if (!exceedsLimit) await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { [waitProp]: movies });
 
@@ -369,13 +363,11 @@ export class MooVBot extends BaseBot {
     const baseMessage = 'You have saved next movies to your list:';
     const noItemsMessage = 'You have no items in the list';
     const movies = await this.getWaitForReleaseMoviesList(chatId);
-    const message = movies?.length ? baseMessage : noItemsMessage;
+    const message = Object.keys(movies).length ? baseMessage : noItemsMessage;
+    const inlineKeyboard: Array<InlineKeyboard[]> = [];
 
-    let inlineKeyboard = [];
-    movies.forEach(movie => inlineKeyboard.push([{ text: movie.title, callback_data: movie.id.toString() }]));
+    Object.entries(movies).forEach(([id, movie]: [string, StoredStreamingMovies[number]]) => inlineKeyboard.push([{ text: movie.title, callback_data: id }]));
     inlineKeyboard.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
-
-    console.log('Keyboard props: ', inlineKeyboard);
 
     await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
