@@ -84,9 +84,7 @@ jobs:
             --query 'LayerVersionArn' --output text)
 
           # Find the latest ARN for the AppConfig Extension in your account/region
-          APPCONFIG_LAYER_ARN=$(aws ssm get-parameter \
-            --name "/aws/service/appconfig/lambda_extension/us-east-1/x86_64/latest" \
-            --query "Parameter.Value" --output text)
+          APPCONFIG_LAYER_ARN="arn:aws:lambda:${{ secrets.AWS_REGION }}:027255383542:layer:AWS-AppConfig-Extension:296"
             
           # Function relying on "base_bot_deps" layer
           FUNCTIONS=("moo_v_bot" "moo_v_bot_producer" "rock_paper_scissors_bot")
