@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
 
       - name: Install dependencies
         run: npm install
@@ -77,10 +77,24 @@ jobs:
       - name: Update Lambda Layer
         if: steps.changes.outputs.common == 'true'
         run: |
-          LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip --query 'LayerVersionArn' --output text)
-          aws lambda update-function-configuration --function-name moo_v_bot --layers $LAYER_ARN --query 'Layers' --output table
-          aws lambda update-function-configuration --function-name moo_v_bot_producer --layers $LAYER_ARN --query 'Layers' --output table
-          aws lambda update-function-configuration --function-name rock_paper_scissors_bot --layers $LAYER_ARN --query 'Layers' --output table
+          COMMON_LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Common Layer" --zip-file fileb://layer_output/layer.zip --query 'LayerVersionArn' --output text)
+          
+          # Find the latest ARN for the AppConfig Extension in your account/region
+          APPCONFIG_LAYER_ARN=$(aws lambda list-layer-versions --layer-name AWS-AppConfig-Extension --query 'LayerVersions[0].LayerVersionArn' --output text)
+            
+          # Function relying on "base_bot_deps" layer
+          FUNCTIONS=("moo_v_bot" "moo_v_bot_producer" "rock_paper_scissors_bot")
+
+          for FUNCTION in "${FUNCTIONS[@]}"; do
+            echo "Updating $FUNCTION..."
+
+            # Update the function with BOTH layers (This prevents overwriting)
+            aws lambda update-function-configuration \
+              --function-name "$FUNCTION" \
+              --layers "$COMMON_LAYER_ARN" "$APPCONFIG_LAYER_ARN" \
+              --query 'Layers[].Arn' \
+              --output table
+          done
 
       - name: Clean up
         run: rm -rf layer_output
