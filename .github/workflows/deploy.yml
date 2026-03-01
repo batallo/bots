@@ -64,6 +64,11 @@ jobs:
         run: |
           aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
 
+      - name: Update moo_v_bot_producer Lambda Function
+        if: steps.changes.outputs.moo_v_bot == 'true'
+        run: |
+          aws lambda update-function-code --function-name moo_v_bot_producer --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
+
       - name: Update rock_paper_scissors_bot Lambda Function
         if: steps.changes.outputs.rock_paper_scissors_bot == 'true'
         run: |
@@ -74,6 +79,7 @@ jobs:
         run: |
           LAYER_ARN=$(aws lambda publish-layer-version --layer-name base_bot_deps --description "Updated Layer" --zip-file fileb://layer_output/layer.zip --query 'LayerVersionArn' --output text)
           aws lambda update-function-configuration --function-name moo_v_bot --layers $LAYER_ARN --query 'Layers' --output table
+          aws lambda update-function-configuration --function-name moo_v_bot_producer --layers $LAYER_ARN --query 'Layers' --output table
           aws lambda update-function-configuration --function-name rock_paper_scissors_bot --layers $LAYER_ARN --query 'Layers' --output table
 
       - name: Clean up

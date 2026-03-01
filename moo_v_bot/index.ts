@@ -18,7 +18,7 @@ export async function handler(event: any) {
 
   if (pollAnswer?.option_ids?.every((el: number) => el == 0)) {
     console.log('Received next Poll Answer: ', pollAnswer);
-    const voteChat = (await mooVBot.getChatWithVote(pollAnswer.poll_id)).at(0);
+    const [voteChat] = await mooVBot.getChatWithVote(pollAnswer.poll_id);
     const userId: number = pollAnswer.user.id;
     if (voteChat) await mooVBot.addWatcher(voteChat, userId);
   }
@@ -104,6 +104,8 @@ export async function handler(event: any) {
         const movieId = +callbackData;
         // TO DO: should delete search list here to avoid user clicking on several search results and spamming the service
         return await mooVBot.inlineStreamingMovieData(chatId, movieId, { updateMessageId: innerValue.message_id });
+
+        // TO DO: provide to function above known data about user from db - knownData
       }
 
       if (inlineWaitsStreamingInput && inputMessage) {

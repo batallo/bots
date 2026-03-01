@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocument, PutCommandInput, TranslateConfig, UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocument, PutCommandInput, ScanCommandInput, TranslateConfig, UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
+import { CompositeKey } from '../moo_v_bot/types';
 
 const docClientOptions: TranslateConfig = {
   marshallOptions: {
@@ -45,8 +46,7 @@ export class DynamoDbBase {
     return dataResponse?.Item as T;
   }
 
-  // TODO: improve typing for compositeKeys
-  async batchGetItem<T extends Record<string, any>>(compositeKeys: Partial<T>[]): Promise<T[]> {
+  async batchGetItem<T extends Record<string, any>>(compositeKeys: CompositeKey[]): Promise<T[]> {
     let dataResponse;
 
     const params = {
@@ -65,24 +65,14 @@ export class DynamoDbBase {
     return dataResponse?.Responses?.[this.dbTitle] as T[];
   }
 
-  // TODO: improve typing for compositeKeys
-  async scanFotItem<T extends Record<string, any>>(inputData: Partial<T>[]): Promise<T[]> {
+  // TODO: implement handling LastEvaluatedKey if db grows
+  async scanFotItem<T>(inputData: Omit<ScanCommandInput, 'TableName'>): Promise<T[]> {
     let dataResponse;
-
-    const attributes = inputData.flatMap(el => Object.keys(el));
 
     const params = {
       TableName: this.dbTitle,
-      FilterExpression: '',
-      ExpressionAttributeValues: {} as Record<string, any>
+      ...inputData
     };
-
-    attributes.forEach((key, i) => {
-      const expressionValue = `:value_${i}`;
-
-      params.ExpressionAttributeValues[expressionValue] = inputData[i][key];
-      params.FilterExpression += (!i ? '' : ' AND ') + `${key} = ${expressionValue}`;
-    });
 
     try {
       dataResponse = await this.docClient.scan(params);

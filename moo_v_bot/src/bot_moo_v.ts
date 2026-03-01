@@ -243,15 +243,28 @@ export class MooVBot extends BaseBot {
     await this.setCurrentPoll(chatId, pollId);
   }
 
-  async getChatWithVote(pollId: string) {
-    return this.dynamoDbClient.scanFotItem<GroupSchema>([{ ['votes.participants.poll_id' as any]: pollId }]);
+  async getChatWithVote(pollId: string): Promise<Pick<GroupSchema, 'chat_id' | 'votes'>[]> {
+    return this.dynamoDbClient.scanFotItem<GroupSchema>({
+      ExpressionAttributeValues: { ':pollId': pollId },
+      FilterExpression: 'votes.participants.poll_id = :pollId',
+      ProjectionExpression: 'chat_id, votes'
+    });
   }
 
-  async addWatcher(chatWithVote: GroupSchema, userId: number) {
+  async addWatcher(chatWithVote: Pick<GroupSchema, 'chat_id' | 'votes'>, userId: number) {
     const compositeKey = this.getCompositeKey(chatWithVote.chat_id);
     const watchers = [userId].concat(chatWithVote?.votes?.participants?.user_ids ?? []);
     const userIdsKey = 'votes.participants.user_ids' as any;
     await this.dynamoDbClient.updateItem<GroupSchema>(compositeKey, { [userIdsKey]: [...new Set(watchers)] });
+  }
+
+  async getChatsAwaitingForMovies() {
+    return this.dynamoDbClient.scanFotItem<Pick<UserSchema, 'chat_id' | 'deleted' | 'streaming'>>({
+      ExpressionAttributeNames: { '#await': 'await' },
+      ExpressionAttributeValues: { ':emptyMap': {} },
+      FilterExpression: 'attribute_exists(streaming.#await) AND streaming.#await <> :emptyMap',
+      ProjectionExpression: 'chat_id, deleted, streaming.#await'
+    });
   }
 
   async inlineMenuPrivateStreaming(chatId: number, message = 'How can I help you?', options?: TelegramSendParam) {
