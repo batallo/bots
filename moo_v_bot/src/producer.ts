@@ -14,7 +14,7 @@ interface MovieWaiters {
   };
 }
 
-export async function produce() {
+export async function handler() {
   if (!cachedConfig) {
     cachedConfig = await getBotConfig();
   }
@@ -50,7 +50,7 @@ export async function produce() {
   }));
 
   if (masterUserId && aggregatedSQSMessageData.length >= +maxMovieQueries) {
-    await mooVBot.sendToTelegram(masterUserId, `Maximum movie queries (<b>${maxMovieQueries}</b>) reached.`);
+    await mooVBot.sendToTelegram(masterUserId, `Maximum movie queries (<b>${maxMovieQueries} unique movies</b> in users' lists) reached.`);
   }
 
   const messages: Array<SendMessageBatchRequestEntry[]> = [];
