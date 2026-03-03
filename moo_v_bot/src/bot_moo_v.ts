@@ -267,6 +267,16 @@ export class MooVBot extends BaseBot {
     });
   }
 
+  async moveAwaitToReady(chatId: number, movie: StoredStreamingMovies) {
+    const [movieId, movieData] = Object.entries(movie)[0];
+
+    return this.dynamoDbClient.moveItem<UserSchema>(this.getCompositeKey(chatId), {
+      currentProp: `streaming.await.${movieId}`,
+      targetProp: `streaming.ready.${movieId}`,
+      data: movieData
+    });
+  }
+
   async inlineMenuPrivateStreaming(chatId: number, message = 'How can I help you?', options?: TelegramSendParam) {
     const searchForMovie: InlineKeyboard[] = [{ text: 'Search for a movie', callback_data: 'private_menu_streaming_search' }];
     const awaitList: InlineKeyboard[] = [{ text: 'My await list', callback_data: 'private_menu_streaming_await_list' }];

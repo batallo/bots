@@ -63,10 +63,7 @@ jobs:
         if: steps.changes.outputs.moo_v_bot == 'true'
         run: |
           aws lambda update-function-code --function-name moo_v_bot --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
-
-      - name: Update moo_v_bot_producer Lambda Function
-        if: steps.changes.outputs.moo_v_bot == 'true'
-        run: |
+          aws lambda update-function-code --function-name moo_v_bot_consumer --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
           aws lambda update-function-code --function-name moo_v_bot_producer --zip-file fileb://layer_output/moo_v_bot.zip --query 'FunctionName' --output text
 
       - name: Update rock_paper_scissors_bot Lambda Function
@@ -87,7 +84,7 @@ jobs:
           APPCONFIG_LAYER_ARN="arn:aws:lambda:${{ secrets.AWS_REGION }}:027255383542:layer:AWS-AppConfig-Extension:296"
             
           # Function relying on "base_bot_deps" layer
-          FUNCTIONS=("moo_v_bot" "moo_v_bot_producer" "rock_paper_scissors_bot")
+          FUNCTIONS=("moo_v_bot" "moo_v_bot_consumer" "moo_v_bot_producer" "rock_paper_scissors_bot")
 
           for FUNCTION in "${FUNCTIONS[@]}"; do
             echo "Updating $FUNCTION..."
