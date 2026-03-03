@@ -39,7 +39,10 @@ export async function handler(message: Message) {
 
   for (const movie of request) {
     const { status, name } = await streaming.getMovieFullInfoByUrl(movie.link);
-    if (status) continue;
+    if (status) {
+      console.log('Movie status:', status);
+      continue;
+    }
 
     // Notify user in Telegram
     const sendTelegramItem = movie.users.map(user => {
