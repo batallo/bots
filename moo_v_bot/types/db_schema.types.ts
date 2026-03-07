@@ -11,9 +11,16 @@ interface UserData {
   username: string;
 }
 
+export interface StoredStreamingMovies {
+  [movieId: number]: {
+    title: string;
+    link: string;
+  };
+}
+
 interface StreamingData {
-  ready: string[];
-  wait: string[];
+  ready: StoredStreamingMovies;
+  await: StoredStreamingMovies;
 }
 
 export interface UserSchema extends CompositeKey {

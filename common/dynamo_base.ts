@@ -1,5 +1,5 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocument, PutCommandInput, TranslateConfig, UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocument, PutCommandInput, ScanCommandInput, TranslateConfig, UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
 
 const docClientOptions: TranslateConfig = {
   marshallOptions: {
@@ -45,7 +45,6 @@ export class DynamoDbBase {
     return dataResponse?.Item as T;
   }
 
-  // TODO: improve typing for compositeKeys
   async batchGetItem<T extends Record<string, any>>(compositeKeys: Partial<T>[]): Promise<T[]> {
     let dataResponse;
 
@@ -65,24 +64,14 @@ export class DynamoDbBase {
     return dataResponse?.Responses?.[this.dbTitle] as T[];
   }
 
-  // TODO: improve typing for compositeKeys
-  async scanFotItem<T extends Record<string, any>>(inputData: Partial<T>[]): Promise<T[]> {
+  // TODO: implement handling LastEvaluatedKey if db grows
+  async scanFotItem<T>(inputData: Omit<ScanCommandInput, 'TableName'>): Promise<T[]> {
     let dataResponse;
-
-    const attributes = inputData.flatMap(el => Object.keys(el));
 
     const params = {
       TableName: this.dbTitle,
-      FilterExpression: '',
-      ExpressionAttributeValues: {} as Record<string, any>
+      ...inputData
     };
-
-    attributes.forEach((key, i) => {
-      const expressionValue = `:value_${i}`;
-
-      params.ExpressionAttributeValues[expressionValue] = inputData[i][key];
-      params.FilterExpression += (!i ? '' : ' AND ') + `${key} = ${expressionValue}`;
-    });
 
     try {
       dataResponse = await this.docClient.scan(params);
@@ -99,7 +88,7 @@ export class DynamoDbBase {
       TableName: this.dbTitle,
       Key: compositeKey,
       UpdateExpression: `REMOVE ${removeProperty}`,
-      ReturnValues: 'UPDATED_NEW'
+      ReturnValues: ReturnValue.UPDATED_NEW
     };
 
     try {
@@ -112,17 +101,59 @@ export class DynamoDbBase {
 
   // TODO: improve typing for updateProperty
   async updateItem<T extends Record<string, any>>(compositeKey: Partial<T>, updateProperty: Partial<Record<keyof T, T[keyof T]>>) {
-    const propName = Object.keys(updateProperty)[0];
-    const proValue = updateProperty[propName];
+    const [propName, propValue] = Object.entries(updateProperty)[0];
 
     const updParams: UpdateCommandInput = {
       TableName: this.dbTitle,
       Key: compositeKey,
       UpdateExpression: `set ${propName} = :newValue`,
       ExpressionAttributeValues: {
-        ':newValue': proValue
+        ':newValue': propValue
       },
-      ReturnValues: 'UPDATED_NEW'
+      ReturnValues: ReturnValue.UPDATED_NEW
+    };
+
+    try {
+      const dataResponse = await this.docClient.update(updParams);
+      console.log(`Updated value for DynamoDB item is: `, dataResponse?.Attributes);
+    } catch (err) {
+      console.error(`Error updating item from "${this.dbTitle}" DynamoDB: `, err);
+    }
+  }
+
+  // TODO: improve types for currentProp | targetProp
+  async moveItem<T extends Record<string, any>>(compositeKey: Partial<T>, params: { currentProp: string; targetProp: string; data: any }) {
+    const fromParts = params.currentProp.split('.');
+    const toParts = params.targetProp.split('.');
+
+    const ExpressionAttributeNames: Record<string, string> = {};
+
+    // 1. Map "from" parts: Each segment gets a unique #current_prop_N placeholder
+    const currentProp = fromParts
+      .map((part, i) => {
+        const key = `#current_prop_${i}`;
+        ExpressionAttributeNames[key] = part;
+        return key;
+      })
+      .join('.');
+
+    // 2. Map "to" parts: Each segment gets a unique #target_prop_N placeholder
+    const targetProp = toParts
+      .map((part, i) => {
+        const key = `#target_prop_${i}`;
+        ExpressionAttributeNames[key] = part;
+        return key;
+      })
+      .join('.');
+
+    const updParams: UpdateCommandInput = {
+      TableName: this.dbTitle,
+      Key: compositeKey,
+      ConditionExpression: `attribute_exists(${currentProp})`,
+      UpdateExpression: `REMOVE ${currentProp} SET ${targetProp} = :data`,
+      ExpressionAttributeNames,
+      ExpressionAttributeValues: { ':data': params.data },
+      ReturnValues: ReturnValue.UPDATED_NEW
     };
 
     try {
