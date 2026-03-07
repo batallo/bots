@@ -1,6 +1,6 @@
 import { BaseBot } from '../../common/bot_base';
 import { InlineKeyboard, TelegramSendParam } from '../../common/types';
-import { GroupSchema, StoredStreamingMovies, UserSchema } from '../types';
+import { BotListKind, GroupSchema, StoredStreamingMovies, UserSchema } from '../types';
 import { Streaming } from './streaming';
 
 export class MooVBot extends BaseBot {
@@ -122,6 +122,11 @@ export class MooVBot extends BaseBot {
   async getWaitForReleaseMoviesList(chatId: number) {
     const userData = await this.getItem<UserSchema>(chatId);
     return userData?.streaming?.await;
+  }
+
+  async getReadyMoviesList(chatId: number) {
+    const userData = await this.getItem<UserSchema>(chatId);
+    return userData?.streaming?.ready;
   }
 
   async removeMovie(chatId: number, movieIndex: string, options?: TelegramSendParam) {
@@ -280,32 +285,36 @@ export class MooVBot extends BaseBot {
   async inlineMenuPrivateStreaming(chatId: number, message = 'How can I help you?', options?: TelegramSendParam) {
     const searchForMovie: InlineKeyboard[] = [{ text: 'Search for a movie', callback_data: 'private_menu_streaming_search' }];
     const awaitList: InlineKeyboard[] = [{ text: 'My await list', callback_data: 'private_menu_streaming_await_list' }];
+    const readyList: InlineKeyboard[] = [{ text: 'Ready to watch list', callback_data: 'private_menu_streaming_ready_list' }];
     const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'private_menu_streaming_cancel_search' }];
 
-    const inlineKeyboard = [searchForMovie, awaitList, cancel];
+    const inlineKeyboard = [searchForMovie, awaitList, readyList, cancel];
 
     return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
 
   async inlineStreamingSearchResult(chatId: number, movieTitle: string, page?: number) {
     const searchResult = await this.streamingClient.searchMovies(movieTitle, page);
-
     const inlineKeyboard: Array<InlineKeyboard[]> = [];
-    searchResult.forEach(foundMovie => {
+
+    searchResult?.forEach(foundMovie => {
       const button: InlineKeyboard[] = [
         { text: `${foundMovie.title} (${foundMovie.year}, ${foundMovie.type}, ${foundMovie.country})`, callback_data: foundMovie.id }
       ];
       return inlineKeyboard.push(button);
     });
+
     inlineKeyboard.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
 
-    const message = searchResult.length ? "That's what I have found:" : "Unfortunately I couldn't find anything with your query";
+    const resultMessage = searchResult?.length ? "That's what I have found:" : "Unfortunately I couldn't find anything with your query";
+    const errorMessage = 'Sorry, service is temporarily unavailable';
+    const message = searchResult ? resultMessage : errorMessage;
 
     await this.setWaitForStreamingInput(chatId, 0);
     return await this.sendToTelegram(chatId, message, { inlineKeyboard });
   }
 
-  async inlineStreamingMovieData(chatId: number, movieId: number, options?: TelegramSendParam) {
+  async inlineStreamingMovieData(chatId: number, movieId: number, userData: UserSchema, options?: TelegramSendParam) {
     const megaTab = (tabLength = 8) => '\t'.repeat(tabLength);
     const movieLinkData = await this.streamingClient.getMovieInfoById(movieId);
     if (!movieLinkData.link) {
@@ -357,35 +366,98 @@ export class MooVBot extends BaseBot {
     // poster - no need
     const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
 
-    if (statusInfo) inlineKeyboard.unshift([{ text: 'Wait for release', callback_data: `add_${movieId}` }]);
+    const isMovieAwaited = Object.keys(userData.streaming.await).includes(movieId.toString());
+    const isMovieReady = Object.keys(userData.streaming.ready).includes(movieId.toString());
 
-    // TODO: implement logic to remove from my list if it was there and is already available (switch to wait/remove)
+    if (statusInfo) {
+      isMovieAwaited
+        ? inlineKeyboard.unshift([{ text: 'Remove from wait list', callback_data: `remove_wait_${movieId}` }])
+        : inlineKeyboard.unshift([{ text: 'Wait for release', callback_data: `add_wait_${movieId}` }]);
+    } else {
+      isMovieReady
+        ? inlineKeyboard.unshift([{ text: 'Remove from watch list', callback_data: `remove_watch_${movieId}` }])
+        : inlineKeyboard.unshift([{ text: 'Add to watch list', callback_data: `add_watch_${movieId}` }]);
+    }
+
     return await this.sendToTelegram(chatId, message.filter(el => el).join('\n'), {
       updateMessageId: options?.updateMessageId,
       inlineKeyboard
     });
   }
 
-  async inlineStreamingAddWaitForReleaseMovie(chatId: number, movieData: { id: number; title: string; link: string }, options?: TelegramSendParam) {
+  // TO DO: add info regarding current UserData
+  async inlineStreamingAddMovieToList(
+    chatId: number,
+    movieData: { listKind: BotListKind; id: number; title: string; link: string },
+    options?: TelegramSendParam
+  ) {
     const maxAwaitMoviesCount = this.maxMoviesCount * 2;
-    const baseMessage = `<b>"${movieData.title}"</b> was successfully added to your list.\nYou will be notified when it becomes available.`;
-    const exceedsListLimit = `Currently you could store no more than <b>${maxAwaitMoviesCount} movies</b> in your list`;
+    let listName: string;
+    let movies: StoredStreamingMovies = {};
 
-    const movies = await this.getWaitForReleaseMoviesList(chatId);
+    if (movieData.listKind === 'await') {
+      listName = 'Wait for Release';
+      movies = await this.getWaitForReleaseMoviesList(chatId);
+    } else if (movieData.listKind === 'ready') {
+      listName = 'Ready to watch';
+      movies = await this.getReadyMoviesList(chatId);
+
+      // TO DO: this could be removed when paginations is implemented. Currently there is no limit for Ready list movies count
+      movies = Object.fromEntries(Object.entries(movies).slice(0, maxAwaitMoviesCount));
+    } else {
+      const errorMessage = 'There was an error during operation. Please reach out to bot support';
+      await this.sendToTelegram(chatId, errorMessage, { updateMessageId: options?.updateMessageId });
+      throw new Error(`Invalid list kind: ${movieData.listKind}`);
+    }
+
+    let baseMessage = `<b>"${movieData.title}"</b> was successfully added to your "${listName}" list.`;
+    if (movieData.listKind) baseMessage += '\nYou will be notified when it becomes available.';
+    const exceedsListLimit = `Currently you could store no more than <b>${maxAwaitMoviesCount} movies</b> in your "${listName}" list`;
+
     movies[movieData.id] = { title: this.trimMovieNameToLength(movieData.title), link: movieData.link };
     const exceedsLimit = Object.keys(movies).length > maxAwaitMoviesCount;
     const message = exceedsLimit ? exceedsListLimit : baseMessage;
-    const waitProp = 'streaming.await' as keyof UserSchema;
+    const waitProp = `streaming.${movieData.listKind}` as keyof UserSchema;
 
     if (!exceedsLimit) await this.dynamoDbClient.updateItem<UserSchema>(this.getCompositeKey(chatId), { [waitProp]: movies });
 
     return await this.inlineMenuPrivateStreaming(chatId, message, { updateMessageId: options?.updateMessageId });
   }
 
-  async inlineStreamingAwaitListMovies(chatId: number, options?: TelegramSendParam) {
-    const baseMessage = 'You have saved next movies to your list:';
-    const noItemsMessage = 'You have no items in the list';
-    const movies = await this.getWaitForReleaseMoviesList(chatId);
+  async inlineStreamingRemoveMovieFromList(
+    chatId: number,
+    movieData: { listKind: BotListKind; id: number; title: string },
+    options?: TelegramSendParam
+  ) {
+    let message = `<b>"${movieData.title}"</b> was successfully removed from your list.`;
+    if (movieData.listKind == 'await') message += '\nThere would be no notifications on movie status.';
+    await this.dynamoDbClient.removeItem<UserSchema>(this.getCompositeKey(chatId), `streaming.${movieData.listKind}.${movieData.id}`);
+    return await this.inlineMenuPrivateStreaming(chatId, message, { updateMessageId: options?.updateMessageId });
+  }
+
+  async inlineStreamingListMovies(chatId: number, listOptions: { listKind: BotListKind }, options?: TelegramSendParam) {
+    let listName: string;
+    let movies: StoredStreamingMovies = {};
+
+    if (listOptions.listKind === 'await') {
+      listName = 'Wait for Release';
+      movies = await this.getWaitForReleaseMoviesList(chatId);
+    } else if (listOptions.listKind === 'ready') {
+      listName = 'Ready to watch';
+      movies = await this.getReadyMoviesList(chatId);
+
+      // TO DO: this could be removed when paginations is implemented. Currently there is no limit for Ready list movies count
+      const maxAwaitMoviesCount = this.maxMoviesCount * 2;
+      movies = Object.fromEntries(Object.entries(movies).slice(0, maxAwaitMoviesCount));
+    } else {
+      const errorMessage = 'There was an error during operation. Please reach out to bot support';
+      await this.sendToTelegram(chatId, errorMessage, { updateMessageId: options?.updateMessageId });
+      throw new Error(`Invalid list kind: ${listOptions.listKind}`);
+    }
+
+    const baseMessage = `You have saved next movies to your "${listName}" list:`;
+    const noItemsMessage = `You have no items in the "${listName}" list`;
+
     const message = Object.keys(movies).length ? baseMessage : noItemsMessage;
     const inlineKeyboard: Array<InlineKeyboard[]> = [];
 
