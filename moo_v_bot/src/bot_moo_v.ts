@@ -411,7 +411,7 @@ export class MooVBot extends BaseBot {
     }
 
     let baseMessage = `<b>"${movieData.title}"</b> was successfully added to your "${listName}" list.`;
-    if (movieData.listKind) baseMessage += '\nYou will be notified when it becomes available.';
+    if (movieData.listKind == 'await') baseMessage += '\nYou will be notified when it becomes available.';
     const exceedsListLimit = `Currently you could store no more than <b>${maxAwaitMoviesCount} movies</b> in your "${listName}" list`;
 
     movies[movieData.id] = { title: this.trimMovieNameToLength(movieData.title), link: movieData.link };
