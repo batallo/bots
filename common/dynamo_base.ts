@@ -83,17 +83,31 @@ export class DynamoDbBase {
     return dataResponse?.Items as T[];
   }
 
-  async removeItem<T extends Record<string, any>>(compositeKey: Partial<T>, removeProperty: string) {
+  async removeItem<T extends Record<string, any>>(compositeKey: Partial<T>, property: string) {
+    const ExpressionAttributeNames: Record<string, string> = {};
+
+    // 1. Map property parts: Each segment gets a unique #remove_prop_N placeholder
+    const removeProperty = property
+      .split('.')
+      .map((part, i) => {
+        const key = `#remove_prop_${i}`;
+        ExpressionAttributeNames[key] = part;
+        return key;
+      })
+      .join('.');
+
     const removeParams: UpdateCommandInput = {
       TableName: this.dbTitle,
       Key: compositeKey,
+      ConditionExpression: `attribute_exists(${removeProperty})`,
       UpdateExpression: `REMOVE ${removeProperty}`,
+      ExpressionAttributeNames,
       ReturnValues: ReturnValue.UPDATED_NEW
     };
 
     try {
       const dataResponse = await this.docClient.update(removeParams);
-      console.log(`New value for DynamoDB item is: `, dataResponse?.Attributes?.movies);
+      console.log(`New value for DynamoDB item is: `, dataResponse?.Attributes);
     } catch (err) {
       console.error(`Error removing item from "${this.dbTitle}" DynamoDB: `, err);
     }

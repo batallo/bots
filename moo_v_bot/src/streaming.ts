@@ -6,7 +6,7 @@ export class Streaming {
   private maxSearchNumber = 10;
   private headers = { headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } };
 
-  constructor() { }
+  constructor() {}
 
   // full search
   private async searchMoviesRequest(movieTitle: string, page = 1) {
