@@ -87,16 +87,21 @@ export class DynamoDbBase {
     const ExpressionAttributeNames: Record<string, string> = {};
 
     // 1. Map property parts: Each segment gets a unique #remove_prop_N placeholder
-    const attributeNames = property
+    const removeProperty = property
       .split('.')
       .map((part, i) => {
+        const match = part.match(/^([^\[]+)(\[\d+\])?$/);
+        if (!match) return part;
+
+        const attrName = match[1]; // "movies"
+        const indexPart = match[2] || ''; // "[1]"
+
         const key = `#remove_prop_${i}`;
-        ExpressionAttributeNames[key] = part;
-        return key;
+        ExpressionAttributeNames[key] = attrName;
+
+        return `${key}${indexPart}`;
       })
       .join('.');
-
-    const removeProperty = property.includes('.') ? attributeNames : property;
 
     const removeParams: UpdateCommandInput = {
       TableName: this.dbTitle,
