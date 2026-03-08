@@ -10,14 +10,18 @@ export class Streaming {
 
   // full search
   private async searchMoviesRequest(movieTitle: string, page = 1) {
-    const searchCall = await axios(`${this.baseUrl}/search/?do=search&subaction=search&q=${movieTitle}&page=${page}`, this.headers).catch(err =>
-      console.log(err)
-    );
+    const searchUrl = `${this.baseUrl}/search/?do=search&subaction=search&q=${movieTitle}&page=${page}`;
+    const searchCall = await axios(searchUrl, this.headers).catch(err => {
+      console.log(err);
+      return { data: null, error: err };
+    });
     return searchCall?.data;
   }
 
   async searchMovies(movieTitle: string, page?: number) {
     const searchResult = await this.searchMoviesRequest(movieTitle, page);
+    if (!searchResult) return null;
+
     const doc = parse(searchResult);
     const movies = doc.querySelectorAll('.b-content__inline_item');
 

@@ -103,9 +103,7 @@ export async function handler(event: any) {
       if (/^\d+$/.test(callbackData)) {
         const movieId = +callbackData;
         // TO DO: should delete search list here to avoid user clicking on several search results and spamming the service
-        return await mooVBot.inlineStreamingMovieData(chatId, movieId, { updateMessageId: innerValue.message_id });
-
-        // TO DO: provide to function above known data about user from db - knownData
+        return await mooVBot.inlineStreamingMovieData(chatId, movieId, knownData, { updateMessageId: innerValue.message_id });
       }
 
       if (inlineWaitsStreamingInput && inputMessage) {
@@ -113,7 +111,8 @@ export async function handler(event: any) {
         return await mooVBot.inlineStreamingSearchResult(chatId, inputMessage);
       }
 
-      if (/^add_\d+$/.test(callbackData)) {
+      // Click "Wait for release" option on movie page
+      if (/^add_wait_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
         const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
         const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url;
@@ -121,14 +120,62 @@ export async function handler(event: any) {
         const movieData = {
           id: +movieId,
           title: movieName,
-          link: movieLink
+          link: movieLink,
+          listKind: 'await' as const
         };
 
-        return await mooVBot.inlineStreamingAddWaitForReleaseMovie(chatId, movieData, { updateMessageId: innerValue.message_id });
+        return await mooVBot.inlineStreamingAddMovieToList(chatId, movieData, { updateMessageId: innerValue.message_id });
+      }
+
+      // Click "Add to watch list" option on movie page
+      if (/^add_watch_\d+$/.test(callbackData)) {
+        const [movieId] = callbackData.match(/\d+$/)!;
+        const movieName = inputMessage?.match(/Название:\s+(.*)/)?.[1].trim() || '<Unknown Title>';
+        const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url;
+
+        const movieData = {
+          id: +movieId,
+          title: movieName,
+          link: movieLink,
+          listKind: 'ready' as const
+        };
+
+        return await mooVBot.inlineStreamingAddMovieToList(chatId, movieData, { updateMessageId: innerValue.message_id });
+      }
+
+      // Click "Remove from wait list" option on movie page
+      if (/^remove_wait_\d+$/.test(callbackData)) {
+        const [movieId] = callbackData.match(/\d+$/)!;
+        const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
+
+        const movieData = {
+          id: +movieId,
+          title: movieName,
+          listKind: 'await' as const
+        };
+
+        return await mooVBot.inlineStreamingRemoveMovieFromList(chatId, movieData, { updateMessageId: innerValue.message_id });
+      }
+
+      // Click "Remove from watch list" option on movie page
+      if (/^remove_watch_\d+$/.test(callbackData)) {
+        const [movieId] = callbackData.match(/\d+$/)!;
+        const movieName = inputMessage?.match(/Название:\s+(.*)/)?.[1].trim() || '<Unknown Title>';
+
+        const movieData = {
+          id: +movieId,
+          title: movieName,
+          listKind: 'ready' as const
+        };
+
+        return await mooVBot.inlineStreamingRemoveMovieFromList(chatId, movieData, { updateMessageId: innerValue.message_id });
       }
 
       if (callbackData == 'private_menu_streaming_await_list')
-        return await mooVBot.inlineStreamingAwaitListMovies(chatId, { updateMessageId: innerValue.message_id });
+        return await mooVBot.inlineStreamingListMovies(chatId, { listKind: 'await' }, { updateMessageId: innerValue.message_id });
+
+      if (callbackData == 'private_menu_streaming_ready_list')
+        return await mooVBot.inlineStreamingListMovies(chatId, { listKind: 'ready' }, { updateMessageId: innerValue.message_id });
 
       if (request.message && chatId == masterUserId) {
         const rythme = mooVBot.getRythme(inputMessage);

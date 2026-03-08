@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "pret": "npx prettier --write ."
+    "pret": "npx prettier --write .",
+    "types": "npx tsc --noEmit"
   },
   "keywords": [],
   "author": "anton.shautsou+bots@gmail.com",
