@@ -87,7 +87,7 @@ export class DynamoDbBase {
     const ExpressionAttributeNames: Record<string, string> = {};
 
     // 1. Map property parts: Each segment gets a unique #remove_prop_N placeholder
-    const removeProperty = property
+    const attributeNames = property
       .split('.')
       .map((part, i) => {
         const key = `#remove_prop_${i}`;
@@ -95,6 +95,8 @@ export class DynamoDbBase {
         return key;
       })
       .join('.');
+
+    const removeProperty = property.includes('.') ? attributeNames : property;
 
     const removeParams: UpdateCommandInput = {
       TableName: this.dbTitle,
@@ -107,7 +109,7 @@ export class DynamoDbBase {
 
     try {
       const dataResponse = await this.docClient.update(removeParams);
-      console.log(`New value for DynamoDB item is: `, dataResponse?.Attributes);
+      console.log(`New value for DynamoDB item is: ${JSON.stringify(dataResponse?.Attributes)}. Successfully removed`);
     } catch (err) {
       console.error(`Error removing item from "${this.dbTitle}" DynamoDB: `, err);
     }

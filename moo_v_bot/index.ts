@@ -130,7 +130,7 @@ export async function handler(event: any) {
       // Click "Add to watch list" option on movie page
       if (/^add_watch_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
-        const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
+        const movieName = inputMessage?.match(/Название:\s+(.*)/)?.[1].trim() || '<Unknown Title>';
         const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url;
 
         const movieData = {
@@ -160,7 +160,7 @@ export async function handler(event: any) {
       // Click "Remove from watch list" option on movie page
       if (/^remove_watch_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
-        const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
+        const movieName = inputMessage?.match(/Название:\s+(.*)/)?.[1].trim() || '<Unknown Title>';
 
         const movieData = {
           id: +movieId,
