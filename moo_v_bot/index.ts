@@ -1,3 +1,4 @@
+import { Message, PollAnswer } from '../common/types';
 import { MooVBot } from './src';
 import { UserSchema } from './types';
 
@@ -12,22 +13,32 @@ export async function handler(event: any) {
   };
 
   if (!request) return response;
+  const innerValue: Message = request.message || request.callback_query?.message || request.channel_post;
+  const pollAnswer: PollAnswer = request.poll_answer;
 
-  const innerValue = request.message || request.callback_query?.message || request.channel_post;
-  const pollAnswer = request.poll_answer;
+  if (request.pre_checkout_query) {
+    await mooVBot.handlePreCheckout(request.pre_checkout_query);
+    await mooVBot.sendToTelegram(masterUserId, '⭐️ Pre-checkout attempt! ⭐️');
+    return { statusCode: 200, body: 'ok' };
+  }
 
-  if (pollAnswer?.option_ids?.every((el: number) => el == 0)) {
+  if (innerValue?.successful_payment) {
+    await mooVBot.handleSuccessfulPayment(innerValue, masterUserId);
+    return { statusCode: 200, body: 'ok' };
+  }
+
+  if (pollAnswer?.option_ids?.every(el => el == 0)) {
     console.log('Received next Poll Answer: ', pollAnswer);
     const [voteChat] = await mooVBot.getChatWithVote(pollAnswer.poll_id);
-    const userId: number = pollAnswer.user.id;
-    if (voteChat) await mooVBot.addWatcher(voteChat, userId);
+    const userId = pollAnswer.user?.id;
+    if (voteChat && userId) await mooVBot.addWatcher(voteChat, userId);
   }
 
   if (innerValue) {
     console.log('Received next Inner Value: ', innerValue);
-    const chatId: number = innerValue.chat.id;
-    const inputMessage: string = innerValue.text;
-    const callbackData: string = request.callback_query?.data;
+    const chatId = innerValue.chat.id;
+    const inputMessage = innerValue.text;
+    const callbackData = request.callback_query?.data as string;
 
     const isPrivateChat = innerValue.chat.type == 'private';
 
@@ -42,7 +53,7 @@ export async function handler(event: any) {
 
     // GROUP CHAT
     if (!isPrivateChat) {
-      const user: number = innerValue.from.id;
+      const user = innerValue.from?.id ?? 0;
       const isAdmin = async () => await mooVBot.isUserAdmin(chatId, user);
       if (missingInDb) await mooVBot.addGroup(innerValue.chat);
 
@@ -115,7 +126,8 @@ export async function handler(event: any) {
       if (/^add_wait_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
         const movieName = inputMessage?.match(/Название:\s+(.*)\s+\(.*\)/)?.[1].trim() || '<Unknown Title>';
-        const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url;
+        // @ts-expect-error: TypeScript may not recognize the structure of innerValue.entities
+        const movieLink = innerValue.entities?.find(el => el.url?.includes(movieId))?.url;
 
         const movieData = {
           id: +movieId,
@@ -131,7 +143,8 @@ export async function handler(event: any) {
       if (/^add_watch_\d+$/.test(callbackData)) {
         const [movieId] = callbackData.match(/\d+$/)!;
         const movieName = inputMessage?.match(/Название:\s+(.*)/)?.[1].trim() || '<Unknown Title>';
-        const movieLink = innerValue.entities?.find((el: any) => el.url?.includes(movieId)).url;
+        // @ts-expect-error: TypeScript may not recognize the structure of innerValue.entities
+        const movieLink = innerValue.entities?.find(el => el.url?.includes(movieId)).url;
 
         const movieData = {
           id: +movieId,
@@ -181,6 +194,12 @@ export async function handler(event: any) {
         const rythme = mooVBot.getRythme(inputMessage);
         return await mooVBot.sendToTelegram(chatId, rythme);
       }
+
+      // Donates
+      if (callbackData == 'private_menu_donate') return await mooVBot.inlineDonation(chatId, { updateMessageId: innerValue.message_id });
+
+      if (callbackData == 'private_menu_donate_status' && mooVBot.isUserBotAdmin(chatId))
+        return await mooVBot.sendStarBalance(chatId, { updateMessageId: innerValue.message_id });
     }
   }
 }

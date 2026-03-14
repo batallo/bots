@@ -1,6 +1,6 @@
+import type { InlineKeyboard, LinkPreviewOptions, TelegramSendParam } from '../../common/types';
+import type { BotListKind, GroupSchema, StoredStreamingMovies, UserSchema } from '../types';
 import { BaseBot } from '../../common/bot_base';
-import { InlineKeyboard, TelegramSendParam } from '../../common/types';
-import { BotListKind, GroupSchema, StoredStreamingMovies, UserSchema } from '../types';
 import { Streaming } from './streaming';
 
 export class MooVBot extends BaseBot {
@@ -159,9 +159,16 @@ export class MooVBot extends BaseBot {
 
     const getList: InlineKeyboard[] = [{ text: 'List to watch with friends', callback_data: 'private_menu_list' }];
     const getStreaming: InlineKeyboard[] = [{ text: 'My personal list', callback_data: 'private_menu_streaming' }];
+    const donate: InlineKeyboard[] = [{ text: 'Donate', callback_data: 'private_menu_donate' }];
     const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'inline_cancel' }];
 
-    const inlineKeyboard = [getList, getStreaming, cancel];
+    const inlineKeyboard = [getList, getStreaming, donate, cancel];
+
+    // Admin options
+    if (this.isUserBotAdmin(chatId)) {
+      const donateStatus: InlineKeyboard[] = [{ text: '(Admin) Donates Status', callback_data: 'private_menu_donate_status' }];
+      inlineKeyboard.splice(-1, 0, donateStatus);
+    }
 
     return await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
   }
@@ -208,7 +215,7 @@ export class MooVBot extends BaseBot {
     const baseMessage = 'Which movie do you want to remove from your list?';
     const movies = await this.getMoviesList(chatId);
 
-    const constructRemoveOption = (title: string, i: number) => {
+    const constructRemoveOption = (title: string, i: number): InlineKeyboard[] => {
       return [{ text: title, callback_data: `remove_${i}` }];
     };
 
@@ -366,15 +373,17 @@ export class MooVBot extends BaseBot {
     // poster - no need
     const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
 
-    const isMovieAwaited = Object.keys(userData.streaming.await).includes(movieId.toString());
-    const isMovieReady = Object.keys(userData.streaming.ready).includes(movieId.toString());
+    const isMovieInAwaitList = Object.keys(userData.streaming.await).includes(movieId.toString());
+    const isMovieInReadyList = Object.keys(userData.streaming.ready).includes(movieId.toString());
 
-    if (statusInfo) {
-      isMovieAwaited
+    const isMovieAwaited = statusInfo.includes('ожидаем');
+
+    if (isMovieAwaited) {
+      isMovieInAwaitList
         ? inlineKeyboard.unshift([{ text: 'Remove from wait list', callback_data: `remove_wait_${movieId}` }])
         : inlineKeyboard.unshift([{ text: 'Wait for release', callback_data: `add_wait_${movieId}` }]);
     } else {
-      isMovieReady
+      isMovieInReadyList
         ? inlineKeyboard.unshift([{ text: 'Remove from watch list', callback_data: `remove_watch_${movieId}` }])
         : inlineKeyboard.unshift([{ text: 'Add to watch list', callback_data: `add_watch_${movieId}` }]);
     }
@@ -467,5 +476,48 @@ export class MooVBot extends BaseBot {
     inlineKeyboard.push([{ text: 'Cancel', callback_data: 'private_menu_streaming' }]);
 
     await this.sendToTelegram(chatId, message, { updateMessageId: options?.updateMessageId, inlineKeyboard });
+  }
+
+  async inlineDonation(chatId: number, options?: TelegramSendParam) {
+    const headerPictUrl = process.env.DONATION_HEADER as string;
+    const message = `<b>🎬 Keep MovieBot Alive & Fast 🎬</b>\n\nWe are 100% community-funded. Your support covers our hosting bills and keeps the bot free for everyone.\n\n✨ <b>Telegram Stars</b>\nThe fastest way to support! Perfect for quick, one-tap tips\n\n💳 <b>Direct Card Payment (Whop)</b>\nBest way to support bot! We receive the full amount without app-store fees, helping the bot even more`;
+    const errorHeaderPictUrl = process.env.DONATION_HEADER_ERROR as string;
+    const errorMessage =
+      '🤖🐮 <b>Out to Pasture...</b> 🐮🤖\n\nThe donation grazing lands are closed for maintenance. Our cows are taking a nap, but they will be back to accept your Stars soon!';
+
+    const star_url_01 = process.env.DONATION_STAR_URL_01 as string;
+    const star_url_02 = process.env.DONATION_STAR_URL_02 as string;
+    const star_url_03 = process.env.DONATION_STAR_URL_03 as string;
+    const star_url_04 = process.env.DONATION_STAR_URL_04 as string;
+    const whop_url = process.env.DONATION_WHOP_URL as string;
+
+    const star_tiers_row_01: InlineKeyboard[] = [
+      { text: `⭐️ 25 (The Cameo)`, url: star_url_01 },
+      { text: `⭐️ 50 (Action Hero)`, url: star_url_02 }
+    ];
+    const star_tiers_row_02: InlineKeyboard[] = [
+      { text: `⭐️ 100 (Oscar Winner)`, url: star_url_03 },
+      { text: `⭐️ 250 (Hall of Fame)`, url: star_url_04 }
+    ];
+    const whop: InlineKeyboard[] = [{ text: `💳 Direct Card Payment`, url: whop_url }];
+    const cancel: InlineKeyboard[] = [{ text: 'Cancel', callback_data: 'private_menu_streaming_cancel_search' }];
+
+    const inlineKeyboard = [cancel];
+
+    if (whop_url) inlineKeyboard.unshift(whop);
+    if (star_url_03 && star_url_04) inlineKeyboard.unshift(star_tiers_row_02);
+    if (star_url_01 && star_url_02) inlineKeyboard.unshift(star_tiers_row_01);
+
+    const hasAvailableDonations = inlineKeyboard.length > 1;
+    const link_preview_options: LinkPreviewOptions = {
+      url: hasAvailableDonations ? headerPictUrl : errorHeaderPictUrl,
+      show_above_text: true
+    };
+
+    return await this.sendToTelegram(chatId, hasAvailableDonations ? message : errorMessage, {
+      updateMessageId: options?.updateMessageId,
+      inlineKeyboard,
+      link_preview_options
+    });
   }
 }
