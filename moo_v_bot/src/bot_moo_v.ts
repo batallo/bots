@@ -15,7 +15,7 @@ export class MooVBot extends BaseBot {
     this.streamingClient = new Streaming();
   }
 
-  private trimMovieNameToLength(movie: string, length = this.maxMovieTitleLength) {
+  trimMovieNameToLength(movie: string, length = this.maxMovieTitleLength) {
     const exceedsLengthLimit = movie.trim().length > length;
     return exceedsLengthLimit ? movie.trim().slice(0, length).concat('...') : movie.trim();
   }
