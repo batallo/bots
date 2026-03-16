@@ -165,8 +165,8 @@ export class MooVBot extends BaseBot {
     const inlineKeyboard = [getList, getStreaming, donate, cancel];
 
     // Admin options
-    if (this.isUserBotAdmin(chatId)) {
-      const donateStatus: InlineKeyboard[] = [{ text: '(Admin) Donates Status', callback_data: 'private_menu_donate_status' }];
+    if (this.isMasterUser(chatId)) {
+      const donateStatus: InlineKeyboard[] = [{ text: '(Admin) Donations Status', callback_data: 'private_menu_donate_status' }];
       inlineKeyboard.splice(-1, 0, donateStatus);
     }
 

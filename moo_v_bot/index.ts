@@ -144,7 +144,7 @@ export async function handler(event: any) {
         const [movieId] = callbackData.match(/\d+$/)!;
         const movieName = inputMessage?.match(/Название:\s+(.*)/)?.[1].trim() || '<Unknown Title>';
         // @ts-expect-error: TypeScript may not recognize the structure of innerValue.entities
-        const movieLink = innerValue.entities?.find(el => el.url?.includes(movieId)).url;
+        const movieLink = innerValue.entities?.find(el => el.url?.includes(movieId))?.url;
 
         const movieData = {
           id: +movieId,
@@ -198,7 +198,7 @@ export async function handler(event: any) {
       // Donates
       if (callbackData == 'private_menu_donate') return await mooVBot.inlineDonation(chatId, { updateMessageId: innerValue.message_id });
 
-      if (callbackData == 'private_menu_donate_status' && mooVBot.isUserBotAdmin(chatId))
+      if (callbackData == 'private_menu_donate_status' && mooVBot.isMasterUser(chatId))
         return await mooVBot.sendStarBalance(chatId, { updateMessageId: innerValue.message_id });
     }
   }

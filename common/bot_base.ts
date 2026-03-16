@@ -14,7 +14,7 @@ export class BaseBot {
     this.telegramUrl = `https://api.telegram.org/bot${this.botToken}`;
   }
 
-  isUserBotAdmin(chat_id: number) {
+  isMasterUser(chat_id: number) {
     const masterUserId = parseInt(process.env.MASTER_ID as string);
     return [masterUserId].includes(chat_id);
   }
