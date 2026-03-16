@@ -4,7 +4,13 @@ import { parse } from 'node-html-parser';
 export class Streaming {
   private baseUrl = process.env.STREAMING_URL as string;
   private maxSearchNumber = 10;
-  private headers = { headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } };
+  private headers = {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      Cookie: 'dle_user_taken=1',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0'
+    }
+  };
 
   constructor() {}
 
