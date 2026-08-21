@@ -76,10 +76,15 @@ export class BaseBot {
         chat_id: chatId,
         message_id: messageId
       })
-      .catch(err => {
+      .catch(async (err) => {
         const errorNotice = '-=ERROR ********** ERROR=-';
-        console.error(errorNotice + '\n' + err.response.data + '\n' + errorNotice);
-        throw new Error(err);
+        const details = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+        console.error(errorNotice + '\n' + details + '\n' + errorNotice);
+
+        const fallbackNotice = 'Failed to delete message, but continuing with dialog processing below';
+        await this.sendToTelegram(chatId, fallbackNotice, { updateMessageId: messageId }).catch(noticeErr =>
+          console.error(errorNotice + '\nCould not post the notice either: ' + noticeErr.message + '\n' + errorNotice)
+        );
       });
     return response?.data;
   }
