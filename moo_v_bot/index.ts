@@ -1,11 +1,14 @@
+import { getBotConfig } from '../common/helpers/get_bot_config';
 import { Message, PollAnswer } from '../common/types';
+import { MOO_V_CONFIG } from './config';
 import { MooVBot } from './src';
 import { UserSchema } from './types';
 
-const mooVBot = new MooVBot(process.env.TOKEN_BOT_MOO_V as string);
-const masterUserId = parseInt(process.env.MASTER_ID as string);
-
 export async function handler(event: any) {
+  const config = await getBotConfig(MOO_V_CONFIG);
+  const mooVBot = new MooVBot(config);
+  const masterUserId = config.MASTER_ID;
+
   const request = event.body && JSON.parse(event.body);
   const response = {
     statusCode: 400,

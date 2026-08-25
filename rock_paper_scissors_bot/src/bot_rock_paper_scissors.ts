@@ -1,3 +1,4 @@
+import type { BaseBotConfig } from '../../common/helpers/get_bot_config';
 import { BaseBot } from '../../common/bot_base';
 import { CallbackOption, RollOptions } from '../types';
 import { iconMapper, rollOptions } from './options';
@@ -6,8 +7,8 @@ import { InlineKeyboard } from '../../common/types';
 export class RockPaperScissorsGameBot extends BaseBot {
   private options = rollOptions;
 
-  constructor(token: string) {
-    super('PlayRockPaperScissorsGameBot', token);
+  constructor(config: BaseBotConfig) {
+    super(config);
   }
 
   get randomOption() {

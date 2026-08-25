@@ -7,20 +7,22 @@ const docClientOptions: TranslateConfig = {
   }
 };
 
+// Module scope: every client owns its own keep-alive socket pool, so sharing one for the
+// life of the container avoids a fresh TLS handshake on the first query of each invocation.
+const docClient = DynamoDBDocument.from(new DynamoDBClient(), docClientOptions);
+
 export class DynamoDbBase {
   private dbTitle: string;
-  private docClient: DynamoDBDocument;
 
   constructor(dbTitle: string) {
     this.dbTitle = dbTitle;
-    this.docClient = DynamoDBDocument.from(new DynamoDBClient(), docClientOptions);
   }
 
   async addItem<T extends Record<string, any>>(itemData: T) {
     let dataResponse;
     const putParams: PutCommandInput = { TableName: this.dbTitle, Item: itemData };
     try {
-      dataResponse = await this.docClient.put(putParams);
+      dataResponse = await docClient.put(putParams);
       console.log(`Added item to DynamoDB: `, dataResponse?.Attributes);
     } catch (err) {
       console.error(`Error adding item to DynamoDB: `, err);
@@ -36,7 +38,7 @@ export class DynamoDbBase {
     };
 
     try {
-      dataResponse = await this.docClient.get(params);
+      dataResponse = await docClient.get(params);
       console.log(`Queried DynamoDB: `, dataResponse?.Item);
     } catch (err) {
       console.error(`Error querying "${this.dbTitle}" DynamoDB: `, err);
@@ -55,7 +57,7 @@ export class DynamoDbBase {
     };
 
     try {
-      dataResponse = await this.docClient.batchGet(params);
+      dataResponse = await docClient.batchGet(params);
       console.log(`Queried DynamoDB Batch: `, dataResponse?.Responses?.[this.dbTitle]);
     } catch (err) {
       console.error(`Error batch querying "${this.dbTitle}" DynamoDB: `, err);
@@ -74,7 +76,7 @@ export class DynamoDbBase {
     };
 
     try {
-      dataResponse = await this.docClient.scan(params);
+      dataResponse = await docClient.scan(params);
       console.log(`Scanning DynamoDB: `, dataResponse?.Items);
     } catch (err) {
       console.error(`Error scanning "${this.dbTitle}" DynamoDB: `, err);
@@ -113,7 +115,7 @@ export class DynamoDbBase {
     };
 
     try {
-      const dataResponse = await this.docClient.update(removeParams);
+      const dataResponse = await docClient.update(removeParams);
       console.log(`New value for DynamoDB item is: ${JSON.stringify(dataResponse?.Attributes)}. Successfully removed`);
     } catch (err) {
       console.error(`Error removing item from "${this.dbTitle}" DynamoDB: `, err);
@@ -135,7 +137,7 @@ export class DynamoDbBase {
     };
 
     try {
-      const dataResponse = await this.docClient.update(updParams);
+      const dataResponse = await docClient.update(updParams);
       console.log(`Updated value for DynamoDB item is: `, dataResponse?.Attributes);
     } catch (err) {
       console.error(`Error updating item from "${this.dbTitle}" DynamoDB: `, err);
@@ -178,7 +180,7 @@ export class DynamoDbBase {
     };
 
     try {
-      const dataResponse = await this.docClient.update(updParams);
+      const dataResponse = await docClient.update(updParams);
       console.log(`Updated value for DynamoDB item is: `, dataResponse?.Attributes);
     } catch (err) {
       console.error(`Error updating item from "${this.dbTitle}" DynamoDB: `, err);
