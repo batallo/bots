@@ -48,7 +48,7 @@ const ssmClient = new SSMClient({});
 function forceType(value: string, type: ParamType) {
   if (type === 'number') {
     const parsed = Number(value);
-    if (Number.isNaN(parsed)) throw new Error(`expected a number, got "${value}"`);
+    if (Number.isNaN(parsed)) throw new Error(`expected a number, got ${value.length} non-numeric characters`);
     return parsed;
   }
 
@@ -56,7 +56,7 @@ function forceType(value: string, type: ParamType) {
     const normalized = value.trim().toLowerCase();
     if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
     if (['false', '0', 'no', 'off'].includes(normalized)) return false;
-    throw new Error(`expected a boolean, got "${value}"`);
+    throw new Error(`expected a boolean such as true or false, got ${value.length} characters`);
   }
 
   return value;

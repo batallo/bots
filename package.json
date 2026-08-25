@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "pret": "npx prettier --write .",
-    "types": "npx tsc --noEmit"
+    "types": "npx tsc --noEmit",
+    "check:config": "node layer_output/common/helpers/check_config.js"
   },
   "keywords": [],
   "author": "anton.shautsou+bots@gmail.com",

@@ -27,6 +27,16 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Validate bot configuration
+        run: npm run check:config
+
       - name: Detect changes
         id: changes
         uses: dorny/paths-filter@v2
@@ -54,13 +64,6 @@ jobs:
           find . -type d -name 'nodejs' -prune -o -type f -exec sed -i 's|\(\.\./\)\+common|/opt/nodejs/common|g' {} +
           (cd moo_v_bot && zip -r ../moo_v_bot.zip . && cd ..)
           (cd rock_paper_scissors_bot && zip -r ../rock_paper_scissors_bot.zip . && cd ..)
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Update Lambda Layer
         if: steps.changes.outputs.common == 'true'
