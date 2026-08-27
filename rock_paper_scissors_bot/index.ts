@@ -1,9 +1,12 @@
+import { getBotConfig } from '../common/helpers/get_bot_config';
+import { ROCK_PAPER_SCISSORS_CONFIG } from './config';
 import { RockPaperScissorsGameBot } from './src';
 import { CallbackOption } from './types';
 
-const rockPaperScissorsBot = new RockPaperScissorsGameBot(process.env.TOKEN_BOT_ROCK_PAPER_SCISSORS as string);
-
 export async function handler(event: any) {
+  const config = await getBotConfig(ROCK_PAPER_SCISSORS_CONFIG);
+  const rockPaperScissorsBot = new RockPaperScissorsGameBot(config);
+
   const request = event.body && JSON.parse(event.body);
   const errorResponse = {
     statusCode: 400,

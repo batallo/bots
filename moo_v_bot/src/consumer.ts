@@ -1,4 +1,5 @@
-import { BotConfig, getBotConfig } from '../../common/helpers/get_bot_config';
+import { getBotConfig } from '../../common/helpers/get_bot_config';
+import { MOO_V_CONFIG } from '../config';
 import { StoredStreamingMovies } from '../types';
 import { MooVBot } from './bot_moo_v';
 import { MovieWaiters } from './producer';
@@ -14,18 +15,11 @@ interface ConsumerMessage {
   }[];
 }
 
-const streaming = new Streaming();
-let cachedConfig: BotConfig;
-let mooVBot: MooVBot;
-
 export async function handler(message: ConsumerMessage) {
-  if (!cachedConfig) {
-    cachedConfig = await getBotConfig();
-  }
+  const config = await getBotConfig(MOO_V_CONFIG);
+  const mooVBot = new MooVBot(config);
 
-  if (!mooVBot) {
-    mooVBot = new MooVBot(cachedConfig.TOKEN_BOT_MOO_V);
-  }
+  const streaming = new Streaming(config);
 
   const request: MovieWaiters[string][] = message.Records && message.Records.map(record => JSON.parse(record.body ?? '{}'));
   const response = {

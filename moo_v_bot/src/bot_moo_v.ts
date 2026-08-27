@@ -1,18 +1,19 @@
 import type { InlineKeyboard, LinkPreviewOptions, TelegramSendParam } from '../../common/types';
+import type { MooVConfig } from '../config';
 import type { BotListKind, GroupSchema, StoredStreamingMovies, UserSchema } from '../types';
 import { BaseBot } from '../../common/bot_base';
 import { Streaming } from './streaming';
 
-export class MooVBot extends BaseBot {
+export class MooVBot extends BaseBot<MooVConfig> {
   private maxMoviesCount: number;
   private maxMovieTitleLength: number;
   private streamingClient: Streaming;
 
-  constructor(token: string) {
-    super('moo_v_bot', token);
-    this.maxMoviesCount = parseInt(process.env.MAX_MOVIE_COUNT as string) || 3;
+  constructor(config: MooVConfig) {
+    super(config);
+    this.maxMoviesCount = config.MAX_MOVIE_COUNT;
     this.maxMovieTitleLength = 100;
-    this.streamingClient = new Streaming();
+    this.streamingClient = new Streaming(config);
   }
 
   trimMovieNameToLength(movie: string, length = this.maxMovieTitleLength) {
@@ -324,7 +325,7 @@ export class MooVBot extends BaseBot {
   async inlineStreamingMovieData(chatId: number, movieId: number, userData: UserSchema, options?: TelegramSendParam) {
     const megaTab = (tabLength = 8) => '\t'.repeat(tabLength);
     const movieLinkData = await this.streamingClient.getMovieInfoById(movieId);
-    if (!movieLinkData.link) {
+    if (!movieLinkData?.link) {
       const inlineKeyboard = [[{ text: 'Cancel', callback_data: 'private_menu_streaming' }]];
       return await this.sendToTelegram(chatId, 'Sorry, no data for the movie', {
         updateMessageId: options?.updateMessageId,
@@ -479,17 +480,17 @@ export class MooVBot extends BaseBot {
   }
 
   async inlineDonation(chatId: number, options?: TelegramSendParam) {
-    const headerPictUrl = process.env.DONATION_HEADER as string;
+    const headerPictUrl = this.config.DONATION_HEADER;
     const message = `<b>🎬 Keep MovieBot Alive & Fast 🎬</b>\n\nWe are 100% community-funded. Your support covers our hosting bills and keeps the bot free for everyone.\n\n✨ <b>Telegram Stars</b>\nThe fastest way to support! Perfect for quick, one-tap tips\n\n💳 <b>Direct Card Payment (Whop)</b>\nBest way to support bot! We receive the full amount without app-store fees, helping the bot even more`;
-    const errorHeaderPictUrl = process.env.DONATION_HEADER_ERROR as string;
+    const errorHeaderPictUrl = this.config.DONATION_HEADER_ERROR;
     const errorMessage =
       '🤖🐮 <b>Out to Pasture...</b> 🐮🤖\n\nThe donation grazing lands are closed for maintenance. Our cows are taking a nap, but they will be back to accept your Stars soon!';
 
-    const star_url_01 = process.env.DONATION_STAR_URL_01 as string;
-    const star_url_02 = process.env.DONATION_STAR_URL_02 as string;
-    const star_url_03 = process.env.DONATION_STAR_URL_03 as string;
-    const star_url_04 = process.env.DONATION_STAR_URL_04 as string;
-    const whop_url = process.env.DONATION_WHOP_URL as string;
+    const star_url_01 = this.config.DONATION_STAR_URL_01;
+    const star_url_02 = this.config.DONATION_STAR_URL_02;
+    const star_url_03 = this.config.DONATION_STAR_URL_03;
+    const star_url_04 = this.config.DONATION_STAR_URL_04;
+    const whop_url = this.config.DONATION_WHOP_URL;
 
     const star_tiers_row_01: InlineKeyboard[] = [
       { text: `⭐️ 25 (The Cameo)`, url: star_url_01 },

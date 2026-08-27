@@ -1,22 +1,23 @@
-import axios from 'axios';
+import type { BaseBotConfig } from './helpers/get_bot_config';
 import type { TelegramSendParam, TelegramPollSettings, PreCheckoutQuery, Message } from './types';
+import axios from 'axios';
 import { DynamoDbBase } from './dynamo_base';
-export class BaseBot {
+
+export class BaseBot<InputConfig extends BaseBotConfig = BaseBotConfig> {
   protected botName: string;
+  protected config: InputConfig;
   protected dynamoDbClient: DynamoDbBase;
-  private botToken: string;
   private telegramUrl: string;
 
-  constructor(botName: string, botToken: string) {
-    this.botName = botName;
-    this.botToken = botToken;
-    this.dynamoDbClient = new DynamoDbBase(botName);
-    this.telegramUrl = `https://api.telegram.org/bot${this.botToken}`;
+  constructor(config: InputConfig) {
+    this.botName = config.BOT_NAME;
+    this.config = config;
+    this.dynamoDbClient = new DynamoDbBase(config.BOT_NAME);
+    this.telegramUrl = `https://api.telegram.org/bot${config.BOT_TOKEN}`;
   }
 
   isMasterUser(chat_id: number) {
-    const masterUserId = parseInt(process.env.MASTER_ID as string);
-    return [masterUserId].includes(chat_id);
+    return chat_id === this.config.MASTER_ID;
   }
 
   isCommand(input: string) {
@@ -76,7 +77,7 @@ export class BaseBot {
         chat_id: chatId,
         message_id: messageId
       })
-      .catch(async (err) => {
+      .catch(async err => {
         const errorNotice = '-=ERROR ********** ERROR=-';
         const details = err.response?.data ? JSON.stringify(err.response.data) : err.message;
         console.error(errorNotice + '\n' + details + '\n' + errorNotice);
@@ -145,7 +146,7 @@ export class BaseBot {
     }
   }
 
-  async handleSuccessfulPayment(innerValue: Message, masterUserId?: number) {
+  async handleSuccessfulPayment(innerValue: Message, masterUserId: number = this.config.MASTER_ID) {
     const { chat, from, successful_payment } = innerValue;
     if (!successful_payment) {
       await this.sendToTelegram(chat.id, 'Something went wrong. Please reach out to bot owner');

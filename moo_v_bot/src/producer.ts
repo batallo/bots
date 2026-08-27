@@ -1,12 +1,10 @@
 import { SQSClient, SendMessageBatchCommand, SendMessageBatchRequestEntry } from '@aws-sdk/client-sqs';
-import { BotConfig, getBotConfig } from '../../common/helpers/get_bot_config';
+import { getBotConfig } from '../../common/helpers/get_bot_config';
+import { MOO_V_CONFIG } from '../config';
 import { MooVBot } from './bot_moo_v';
 import type { StoredStreamingMovies } from '../types';
 
 const sqsClient = new SQSClient();
-
-let cachedConfig: BotConfig;
-let mooVBot: MooVBot;
 
 export interface MovieWaiters {
   [movieId: string]: {
@@ -18,19 +16,15 @@ export interface MovieWaiters {
 }
 
 export async function handler() {
-  if (!cachedConfig) {
-    cachedConfig = await getBotConfig();
-  }
+  const config = await getBotConfig(MOO_V_CONFIG);
+  const mooVBot = new MooVBot(config);
 
-  if (!mooVBot) {
-    mooVBot = new MooVBot(cachedConfig.TOKEN_BOT_MOO_V);
-  }
-
-  const masterUserId = Number(cachedConfig.MASTER_ID);
-  const maxCountForSendMessageBatchCommand = Number(cachedConfig.MAX_COUNT_FOR_SEND_MESSAGE_BATCH_COMMAND) || 10;
-  const maxMovieQueries = Number(cachedConfig.MAX_MOVIE_QUERIES) || 50;
-  const SQS_MESSAGE_DELAY = Number(cachedConfig.SQS_MESSAGE_DELAY) || 0;
-  const SQS_QUEUE_URL = cachedConfig.SQS_QUEUE_URL;
+  const masterUserId = config.MASTER_ID;
+  // SendMessageBatch rejects a request carrying more than 10 entries
+  const maxCountForSendMessageBatchCommand = Math.min(config.MAX_COUNT_FOR_SEND_MESSAGE_BATCH_COMMAND, 10);
+  const maxMovieQueries = config.MAX_MOVIE_QUERIES;
+  const SQS_MESSAGE_DELAY = config.SQS_MESSAGE_DELAY;
+  const SQS_QUEUE_URL = config.SQS_QUEUE_URL;
 
   const movieWaiters: MovieWaiters = {};
 

@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Validate types
         run: npm run types
@@ -27,9 +27,19 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Validate bot configuration
+        run: npm run check:config
+
       - name: Detect changes
         id: changes
-        uses: dorny/paths-filter@v2
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             common:
@@ -55,12 +65,30 @@ jobs:
           (cd moo_v_bot && zip -r ../moo_v_bot.zip . && cd ..)
           (cd rock_paper_scissors_bot && zip -r ../rock_paper_scissors_bot.zip . && cd ..)
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Update Lambda Layer
+        if: steps.changes.outputs.common == 'true'
+        run: |
+          COMMON_LAYER_ARN=$(aws lambda publish-layer-version \
+            --layer-name base_bot_deps \
+            --description "Updated Common Layer" \
+            --zip-file fileb://layer_output/layer.zip \
+            --query 'LayerVersionArn' --output text)
+
+          # Function relying on "base_bot_deps" layer
+          FUNCTIONS=("moo_v_bot" "moo_v_bot_consumer" "moo_v_bot_producer" "rock_paper_scissors_bot")
+
+          for FUNCTION in "${FUNCTIONS[@]}"; do
+            echo "Updating $FUNCTION..."
+
+            # Update the function with ALL layers metioned in --layers line (This prevents overwriting)
+            aws lambda update-function-configuration \
+              --function-name "$FUNCTION" \
+              --layers "$COMMON_LAYER_ARN" \
+              --query 'Layers[].Arn' \
+              --output table
+
+            aws lambda wait function-updated --function-name "$FUNCTION"
+          done
 
       - name: Update moo_v_bot Lambda Function
         if: steps.changes.outputs.moo_v_bot == 'true'
@@ -73,32 +101,6 @@ jobs:
         if: steps.changes.outputs.rock_paper_scissors_bot == 'true'
         run: |
           aws lambda update-function-code --function-name rock_paper_scissors_bot --zip-file fileb://layer_output/rock_paper_scissors_bot.zip --query 'FunctionName' --output text
-
-      - name: Update Lambda Layer
-        if: steps.changes.outputs.common == 'true'
-        run: |
-          COMMON_LAYER_ARN=$(aws lambda publish-layer-version \
-            --layer-name base_bot_deps \
-            --description "Updated Common Layer" \
-            --zip-file fileb://layer_output/layer.zip \
-            --query 'LayerVersionArn' --output text)
-
-          # Find the latest ARN for the AppConfig Extension in your account/region
-          APPCONFIG_LAYER_ARN="arn:aws:lambda:${{ secrets.AWS_REGION }}:027255383542:layer:AWS-AppConfig-Extension:296"
-            
-          # Function relying on "base_bot_deps" layer
-          FUNCTIONS=("moo_v_bot" "moo_v_bot_consumer" "moo_v_bot_producer" "rock_paper_scissors_bot")
-
-          for FUNCTION in "${FUNCTIONS[@]}"; do
-            echo "Updating $FUNCTION..."
-
-            # Update the function with BOTH layers (This prevents overwriting)
-            aws lambda update-function-configuration \
-              --function-name "$FUNCTION" \
-              --layers "$COMMON_LAYER_ARN" "$APPCONFIG_LAYER_ARN" \
-              --query 'Layers[].Arn' \
-              --output table
-          done
 
       - name: Clean up
         run: rm -rf layer_output

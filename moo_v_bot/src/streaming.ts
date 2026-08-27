@@ -1,24 +1,29 @@
 import axios from 'axios';
 import { parse } from 'node-html-parser';
+import type { MooVConfig } from '../config';
+
+type StreamingConfig = Pick<MooVConfig, 'STREAMING_URL' | 'STREAMING_SECRET_TOKEN'>;
 
 export class Streaming {
-  private baseUrl = process.env.STREAMING_URL as string;
   private maxSearchNumber = 10;
-  private headers = {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      Cookie: 'dle_user_taken=1',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0'
-    }
-  };
+  private baseUrl: string;
+  private requestConfig: { headers: Record<string, string> };
 
-  constructor() {}
+  constructor(config: StreamingConfig) {
+    this.baseUrl = config.STREAMING_URL;
+    this.requestConfig = {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'x-secret': config.STREAMING_SECRET_TOKEN
+      }
+    };
+  }
 
   // full search
   private async searchMoviesRequest(movieTitle: string, page = 1) {
     const searchUrl = `${this.baseUrl}/search/?do=search&subaction=search&q=${movieTitle}&page=${page}`;
-    const searchCall = await axios(searchUrl, this.headers).catch(err => {
-      console.log(err);
+    const searchCall = await axios(searchUrl, this.requestConfig).catch(err => {
+      console.log('Streaming search failed:', err.response?.status ?? err.message);
       return { data: null, error: err };
     });
     return searchCall?.data;
@@ -58,12 +63,16 @@ export class Streaming {
       id: id,
       is_touch: 1
     };
-    const searchCall = await axios.post(`${this.baseUrl}/engine/ajax/quick_content.php`, query, this.headers).catch(err => console.log(err));
+    const searchCall = await axios
+      .post(`${this.baseUrl}/engine/ajax/quick_content.php`, query, this.requestConfig)
+      .catch(err => console.log('Streaming request failed:', err.response?.status ?? err.message));
     return searchCall?.data;
   }
 
   async getMovieInfoById(id: number) {
     const searchResult = await this.getMovieFullInfoByIdRequest(id);
+    if (!searchResult) return null;
+
     const doc = parse(searchResult);
     const titleBlock = doc.querySelector('.b-content__bubble_title a');
     const link = titleBlock?.attributes.href;
@@ -90,13 +99,17 @@ export class Streaming {
   }
 
   private async getMovieInfoByUrlRequest(movieLink: string) {
-    const searchCall = await axios(movieLink, this.headers).catch(err => console.log(err));
+    const searchCall = await axios(movieLink, this.requestConfig).catch(err =>
+      console.log('Streaming request failed:', err.response?.status ?? err.message)
+    );
     return searchCall?.data;
   }
 
   async getMovieFullInfoByUrl(rawLink: string) {
     const movieLink = rawLink.replace(/^(.+\/{2}[^\/]+)/g, this.baseUrl);
     const searchResult = await this.getMovieInfoByUrlRequest(movieLink);
+    if (!searchResult) throw new Error(`Failed to fetch the movie: ${movieLink}`);
+
     const doc = parse(searchResult);
     const contentElement = doc.querySelector('.b-container.b-wrapper');
     if (!contentElement) throw new Error('Failed to fetch the element');
